@@ -25,6 +25,7 @@
     <encoding>UTF-8</encoding>
     <scala.version>3.2.1</scala.version> <!-- Scala 2.12 not working because of copies of annotations issues -->
     <lsp4j.version>0.21.0</lsp4j.version>
+    <typesafe.version>1.4.2</typesafe.version>
   </properties>
 
 
@@ -40,6 +41,13 @@
       <groupId>org.eclipse.lsp4j</groupId>
       <artifactId>org.eclipse.lsp4j</artifactId>
       <version>${lsp4j.version}</version>
+    </dependency>
+
+    <!-- Hocon parser -->
+    <dependency>
+      <groupId>com.typesafe</groupId>
+      <artifactId>config</artifactId>
+      <version>${typesafe.version}</version>
     </dependency>
 
 

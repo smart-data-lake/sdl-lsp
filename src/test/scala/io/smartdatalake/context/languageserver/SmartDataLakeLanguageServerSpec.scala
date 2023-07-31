@@ -1,4 +1,7 @@
-import io.smartdatalake.SmartDataLakeLanguageServer
+package io.smartdatalake.context.languageserver
+
+import io.smartdatalake.UnitSpec
+import io.smartdatalake.languageserver.SmartDataLakeLanguageServer
 import org.eclipse.lsp4j.InitializeResult
 
 import java.util.concurrent.CompletableFuture

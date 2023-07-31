@@ -1,4 +1,7 @@
-import io.smartdatalake.SmartDataLakeTextDocumentService
+package io.smartdatalake.context.languageserver
+
+import io.smartdatalake.UnitSpec
+import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
 import org.eclipse.lsp4j.{CompletionParams, Position}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {

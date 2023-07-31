@@ -1,7 +1,8 @@
-package io.smartdatalake
+package io.smartdatalake.languageserver
 
-import org.eclipse.lsp4j.{CompletionOptions, InitializeParams, InitializeResult, ServerCapabilities, TextDocumentSyncKind}
-import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, LanguageServer, TextDocumentService, WorkspaceService}
+import io.smartdatalake.languageserver.{SmartDataLakeTextDocumentService, SmartDataLakeWorkspaceService}
+import org.eclipse.lsp4j.services.*
+import org.eclipse.lsp4j.*
 
 import java.util.concurrent.CompletableFuture
 

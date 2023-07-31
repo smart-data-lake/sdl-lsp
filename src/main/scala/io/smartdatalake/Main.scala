@@ -1,5 +1,6 @@
 package io.smartdatalake
 
+import io.smartdatalake.languageserver.SmartDataLakeLanguageServer
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageClient
