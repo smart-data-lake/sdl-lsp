@@ -1,4 +1,4 @@
-package io.smartdatalake.context.languageserver
+package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
@@ -10,7 +10,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
 
   def params: CompletionParams =
     val p = new CompletionParams()
-    p.setPosition(new Position(0, 0))
+    p.setPosition(new Position(16, 0))
     p
 
   "SDL text document service" should "suggest at least one autocompletion item" in {

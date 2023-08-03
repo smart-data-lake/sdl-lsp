@@ -15,7 +15,7 @@ class HoconParserSpec extends UnitSpec {
   case class Fixture(originalText: String, text: String, config: Config)
 
   "Hocon parser" should "find path in hocon file" in {
-    val fixture = loadFixture("fixture/basic-example.conf")
+    val fixture = loadFixture("fixture/hocon/basic-example.conf")
 
     val leftCaretData = List(
       CaretData(1, leftCol, 0, "", ""),
@@ -40,7 +40,7 @@ class HoconParserSpec extends UnitSpec {
   }
 
   it should "find path in file with comments" in {
-    val fixture = loadFixture("fixture/with-comments-example.conf")
+    val fixture = loadFixture("fixture/hocon/with-comments-example.conf")
 
     val leftCaretData = List(
       CaretData(1, leftCol, 0, "", ""),
@@ -74,7 +74,7 @@ class HoconParserSpec extends UnitSpec {
   }
 
   it should "find path in with multi-line values" in {
-    val fixture = loadFixture("fixture/with-multi-lines-example.conf")
+    val fixture = loadFixture("fixture/hocon/with-multi-lines-example.conf")
     val positionMap = MultiLineTransformer.computeCorrectedPositions(fixture.originalText)
 
     val leftCaretData = List(
@@ -145,7 +145,7 @@ class HoconParserSpec extends UnitSpec {
   }
 
   it should "find path in file with lists" in { //TODO not correct yet
-    val fixture = loadFixture("fixture/with-lists-example.conf")
+    val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
 
 
     val leftCaretData = List(

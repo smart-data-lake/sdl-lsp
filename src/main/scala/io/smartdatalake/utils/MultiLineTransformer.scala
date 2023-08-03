@@ -15,11 +15,15 @@ object MultiLineTransformer {
 
 
   def computeCorrectedPositions(text: String): List[(Int, Int)] =
+    
+    def isMultilineModeStartingOrEnding(line: String): Boolean =
+      // handle specific case where the starting """ and ending """ are in the same line or not.
+      line.count(_ == '"') % 2 == 1
     case class State(isInMultiLine: Boolean, lineNumber: Int, columnShift: Int)
     text.split("\n")
       .foldLeft(List(State(false, 1, 0))) {(states, line) =>
         val lastState = states.head
-        val isInTripleQuotes = lastState.isInMultiLine ^ line.contains("\"\"\"")
+        val isInTripleQuotes = lastState.isInMultiLine ^ isMultilineModeStartingOrEnding(line)
         if isInTripleQuotes then
           State(isInTripleQuotes, lastState.lineNumber, lastState.columnShift + line.length)::states
         else

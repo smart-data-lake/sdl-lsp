@@ -1,4 +1,4 @@
-package io.smartdatalake.context.languageserver
+package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.languageserver.SmartDataLakeLanguageServer

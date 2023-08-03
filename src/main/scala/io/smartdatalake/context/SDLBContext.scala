@@ -19,7 +19,7 @@ class SDLBContext private (val text: String, val config: Config, val parentPath:
    * get context of the parent
    * @return either a SimpleConfigObject if parent is a key or a ConfigString, ConfigList, ConfigBoolean etc if it is an end value
    */
-  def getParentContext: Option[ConfigValue] = if parentPath.isBlank then None else  Some(config.getValue(parentPath))
+  def getParentContext: Option[ConfigValue] = if parentPath.isBlank then None else Some(config.getValue(parentPath))
 
 }
 

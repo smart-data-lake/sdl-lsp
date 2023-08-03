@@ -1,4 +1,4 @@
-package io.smartdatalake.context.utils
+package io.smartdatalake.utils
 
 import com.typesafe.config.{Config, ConfigRenderOptions, ConfigUtil}
 import io.smartdatalake.UnitSpec
@@ -9,11 +9,11 @@ import scala.util.Using
 
 class MultiLineTransformerSpec extends UnitSpec {
 
-  private val text: String = loadFile("fixture/with-multi-lines-example.conf")
+  private val text: String = loadFile("fixture/hocon/with-multi-lines-example.conf") //TODO add a fixture with mix-in flattened triple quotes and not
 
 
   "Multi line transformer" should "correctly flatten multi lines" in {
-    val expectedFlattenedText = loadFile("fixture/with-multi-lines-flattened-example.conf")
+    val expectedFlattenedText = loadFile("fixture/hocon/with-multi-lines-flattened-example.conf")
 
     trimLines(MLT.flattenMultiLines(text)) should be (trimLines(expectedFlattenedText))
   }

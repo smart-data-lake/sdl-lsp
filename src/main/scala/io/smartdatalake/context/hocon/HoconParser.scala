@@ -20,9 +20,7 @@ private[context] object HoconParser:
    * @return parsed text in config format
    */
   def parse(text: String): Option[Config] =
-    Try(ConfigFactory.parseString(text)) match
-      case Success(config) => Some(config)
-      case Failure(_) => None
+    Try(ConfigFactory.parseString(text)).toOption
 
   val EMPTY_CONFIG: Config = ConfigFactory.parseString("")
 

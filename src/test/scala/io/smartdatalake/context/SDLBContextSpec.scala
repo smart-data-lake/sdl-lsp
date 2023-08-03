@@ -10,7 +10,7 @@ import scala.util.Using
 
 class SDLBContextSpec extends UnitSpec {
 
-  private val text: String = loadFile("fixture/with-multi-lines-example.conf")
+  private val text: String = loadFile("fixture/hocon/with-multi-lines-example.conf")
 
 
   "Smart DataLake Builder Context" should "creates a context with empty config if text is empty" in {
@@ -22,18 +22,18 @@ class SDLBContextSpec extends UnitSpec {
   }
 
   it should "uses the empty context if line is invalid" in {
-    val text = loadFile("fixture/basic-example.conf")
+    val text = loadFile("fixture/hocon/basic-example.conf")
     SDLBContext.createContext(text, 0, 1) shouldBe SDLBContext.EMPTY_CONTEXT
     SDLBContext.createContext(text, 23, 1) shouldBe SDLBContext.EMPTY_CONTEXT
   }
 
   it should "uses the empty context if col is invalid" in {
-    val text = loadFile("fixture/basic-example.conf")
+    val text = loadFile("fixture/hocon/basic-example.conf")
     SDLBContext.createContext(text, 1, -1) shouldBe SDLBContext.EMPTY_CONTEXT
   }
 
   it should "creates a context correctly with a basic example" in {
-    val text = loadFile("fixture/basic-example.conf")
+    val text = loadFile("fixture/hocon/basic-example.conf")
     val line1Start = SDLBContext.createContext(text, 1, 0)
     line1Start.parentPath shouldBe ""
     line1Start.parentWord shouldBe ""
