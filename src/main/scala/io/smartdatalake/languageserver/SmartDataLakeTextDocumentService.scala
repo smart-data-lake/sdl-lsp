@@ -13,58 +13,33 @@ import scala.util.Using
 
 class SmartDataLakeTextDocumentService extends TextDocumentService {
 
+  private var context: SDLBContext = SDLBContext.EMPTY_CONTEXT
+
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
 
     CompletableFuture.supplyAsync(() => {
+      context = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems = new util.ArrayList[CompletionItem]()
-
-      val fixtureText = //TODO weird behavior with \"\"\"
-        """actions {
-          |
-          |  join-departures-airports {
-          |    type = CustomDataFrameAction
-          |
-          |    inputIds = [stg-departures, int-airports]
-          |    transformer = {
-          |      type = SQLDfsTransformer
-          |      code = {
-          |        btl-connected-airports = "select stg_departures.estdepartureairport, stg_departures.estarrivalairport,        airports.*         from stg_departures join int_airports airports on stg_departures.estArrivalAirport = airports.ident"
-          |      }
-          |    }
-          |  }
-          |
-          |  compute-distances {
-          |    type = CopyAction
-          |
-          |    code = {
-          |      btl-departures-arrivals-airports = "select btl_connected_airports.estdepartureairport, btl_connected_airports.estarrivalairport,        btl_connected_airports.name as arr_name, btl_connected_airports.latitude_deg as arr_latitude_deg, btl_connected_airports.longitude_deg as arr_longitude_deg,        airports.name as dep_name, airports.latitude_deg as dep_latitude_deg, airports.longitude_deg as dep_longitude_deg           from btl_connected_airports join int_airports airports on btl_connected_airports.estdepartureairport = airports.ident"
-          |    }
-          |    metadata {
-          |      feed = compute
-          |    }
-          |  }
-          |
-          |  download-airports  {
-          |
-          |    inputId = ext-airports
-          |  }
-          |
-          |}
-          |
-          |dataObjects {
-          |
-          |
-          |}""".stripMargin.trim
-      val suggestions: List[CompletionItem] = new SDLBCompletionEngineImpl().generateCompletionItems(SDLBContext.createContext(fixtureText, params.getPosition.getLine+1, params.getPosition.getCharacter))
+      val suggestions: List[CompletionItem] = new SDLBCompletionEngineImpl().generateCompletionItems(context)
       suggestions.foreach(e => completionItems.add(e))
 
       messages.Either.forLeft(completionItems).asInstanceOf[messages.Either[util.List[CompletionItem], CompletionList]]
     })
   }
 
-  override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit = ???
+  override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
+    context = SDLBContext.fromText(didOpenTextDocumentParams.getTextDocument.getText)
 
-  override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit = ???
+  override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit =
+    val contentChanges = didChangeTextDocumentParams.getContentChanges
+    val newContext =
+      if contentChanges != null && contentChanges.size() > 0 then
+        // Update the stored document content with the new content. Assuming Full sync technique
+        context.withText(contentChanges.get(0).getText)
+      else
+        context
+    context = newContext
+
 
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = ???
 
@@ -72,7 +47,7 @@ class SmartDataLakeTextDocumentService extends TextDocumentService {
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = ???
 
-  override def hover(params: HoverParams): CompletableFuture[Hover] = super.hover(params)
+  override def hover(params: HoverParams): CompletableFuture[Hover] = super.hover(params) //TODO
 
   override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)
 

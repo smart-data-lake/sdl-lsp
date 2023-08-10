@@ -12,10 +12,14 @@ class SDLBCompletionEngineSpec extends UnitSpec {
   val completionEngine = new SDLBCompletionEngineImpl
 
   "SDLB Completion engine" should "retrieve all the properties of copyAction" in {
-    val context = SDLBContext.createContext(loadFile("fixture/hocon/with-multi-lines-flattened-example.conf"), 16, 0)
-    println(context.parentPath + " " + context.parentWord)
-    println(completionEngine.generateCompletionItems(context))
-    //TODO
+    val context = SDLBContext.fromText(loadFile("fixture/hocon/with-multi-lines-flattened-example.conf"))
+      .withCaretPosition(16, 0)
+    completionEngine.generateCompletionItems(context) should have size 12
+  }
+
+  it should "generate templates for actions" in {
+    val deduplicateTemplate = completionEngine.generateTemplatesForAction().map(_.getInsertText).find(_.startsWith("deduplicate"))
+    deduplicateTemplate should contain ("deduplicateaction_PLACEHOLDER {\n\t\ttype = DeduplicateAction\n\t\tinputId = \"???\"\n\t\toutputId = \"???\"\n\t}\n")
   }
 
 

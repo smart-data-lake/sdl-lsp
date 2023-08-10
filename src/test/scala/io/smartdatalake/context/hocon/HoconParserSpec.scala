@@ -184,7 +184,8 @@ class HoconParserSpec extends UnitSpec {
       CaretData(33, leftCol, 31, "metadata", "actions.join-departures-airports.metadata"),
       CaretData(34, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(35, leftCol, 1, "actions", "actions")
-    )
+    ) // fixture.config.getValue("actions.join-departures-airports.transformers").asInstanceOf[com.typesafe.config.ConfigList].get(0).origin() == 19
+    // fixture.config.getValue("actions.join-departures-airports.transformers").asInstanceOf[com.typesafe.config.ConfigList].get(0).asInstanceOf[com.typesafe.config.ConfigObject].toConfig.getValue("code").origin() == 21
 
     validateText(fixture, leftCol, leftCaretData)
 

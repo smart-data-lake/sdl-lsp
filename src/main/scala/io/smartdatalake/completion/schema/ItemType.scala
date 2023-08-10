@@ -1,11 +1,11 @@
 package io.smartdatalake.completion.schema
 
-enum ItemType(val name: String) {
-  case STRING extends ItemType("string")
-  case BOOLEAN extends ItemType("boolean")
-  case INTEGER extends ItemType("integer")
-  case OBJECT extends ItemType("object")
-  case ARRAY extends ItemType("array")
+enum ItemType(val name: String, val defaultValue: String) {
+  case STRING extends ItemType("string", "\"???\"")
+  case BOOLEAN extends ItemType("boolean", "true")
+  case INTEGER extends ItemType("integer", "0")
+  case OBJECT extends ItemType("object", "{}")
+  case ARRAY extends ItemType("array", "[]")
   
   def isPrimitiveValue: Boolean = this == ItemType.STRING || this == ItemType.BOOLEAN || this == ItemType.INTEGER
   
