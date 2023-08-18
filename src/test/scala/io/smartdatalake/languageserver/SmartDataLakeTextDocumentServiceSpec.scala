@@ -5,9 +5,7 @@ import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
 import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position, TextDocumentItem}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
-
-  val textDocumentService = new SmartDataLakeTextDocumentService
-
+  
   def params: CompletionParams =
     val p = new CompletionParams()
     // Careful, Position of LSP4J is 0-based

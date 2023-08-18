@@ -8,9 +8,7 @@ import scala.io.Source
 import scala.util.Using
 
 class SchemaReaderSpec extends UnitSpec {
-
-  val schemaReader = new SchemaReaderImpl("fixture/sdl-schema/sdl-schema-2.5.0.json")
-
+  
   "Schema Reader" should "retrieve all the properties of copyAction" in {
     val actual = schemaReader.retrieveActionProperties("CopyAction").toList
     val expected = List(

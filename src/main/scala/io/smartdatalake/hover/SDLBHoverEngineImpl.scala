@@ -5,10 +5,7 @@ import org.eclipse.lsp4j.{Hover, MarkupContent, MarkupKind}
 
 import scala.util.{Failure, Success, Try}
 
-class SDLBHoverEngineImpl extends SDLBHoverEngine:
-
-  val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json") //TODO should be retrieved from a service keeping its state, object for example
-
+class SDLBHoverEngineImpl(private val schemaReader: SchemaReader) extends SDLBHoverEngine:
 
   override def generateHoveringInformation(context: SDLBContext): Hover =
     val markupContent = new MarkupContent()

@@ -6,10 +6,8 @@ import org.eclipse.lsp4j.*
 
 import java.util.concurrent.CompletableFuture
 
-class SmartDataLakeLanguageServer extends LanguageServer with LanguageClientAware {
+class SmartDataLakeLanguageServer(private val textDocumentService: TextDocumentService, private val workspaceService: WorkspaceService) extends LanguageServer with LanguageClientAware {
 
-  private val textDocumentService = new SmartDataLakeTextDocumentService
-  private val workspaceService = new SmartDataLakeWorkspaceService
   private var client: Option[LanguageClient] = None
   private var errorCode = 1
 

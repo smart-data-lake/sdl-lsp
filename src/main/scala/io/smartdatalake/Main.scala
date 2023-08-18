@@ -1,9 +1,9 @@
 package io.smartdatalake
 
-import io.smartdatalake.languageserver.SmartDataLakeLanguageServer
+import io.smartdatalake.modules.AppModule
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.eclipse.lsp4j.launch.LSPLauncher
-import org.eclipse.lsp4j.services.LanguageClient
+import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, LanguageServer}
 
 import java.io.{InputStream, PrintStream}
 import java.util.logging.{Level, LogManager, Logger}
@@ -11,7 +11,7 @@ import java.util.logging.{Level, LogManager, Logger}
 /**
  * @author scalathe
  */
-object Main {
+object Main extends AppModule {
   
   def main(args : Array[String]): Unit = {
 
@@ -24,7 +24,7 @@ object Main {
   }
 
   private def startServer(in: InputStream, out: PrintStream) = {
-    val helloLanguageServer = new SmartDataLakeLanguageServer
+    val helloLanguageServer: LanguageServer & LanguageClientAware = languageServer
     val launcher: Launcher[LanguageClient] = LSPLauncher.createServerLauncher(helloLanguageServer, in, out)
     val client: LanguageClient = launcher.getRemoteProxy
 

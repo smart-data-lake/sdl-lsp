@@ -3,6 +3,7 @@ package io.smartdatalake.languageserver
 import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineImpl}
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
+import io.smartdatalake.schema.SchemaReader
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
@@ -12,18 +13,16 @@ import java.util.concurrent.CompletableFuture
 import scala.io.Source
 import scala.util.Using
 
-class SmartDataLakeTextDocumentService extends TextDocumentService {
+class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine, private val hoverEngine: SDLBHoverEngine) extends TextDocumentService {
 
   private var context: SDLBContext = SDLBContext.EMPTY_CONTEXT
-  private val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl
-  private val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl //TODO DI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
 
     CompletableFuture.supplyAsync(() => {
       context = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems = new util.ArrayList[CompletionItem]()
-      val suggestions: List[CompletionItem] = new SDLBCompletionEngineImpl().generateCompletionItems(context)
+      val suggestions: List[CompletionItem] = completionEngine.generateCompletionItems(context)
       suggestions.foreach(e => completionItems.add(e))
 
       messages.Either.forLeft(completionItems).asInstanceOf[messages.Either[util.List[CompletionItem], CompletionList]]
