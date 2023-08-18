@@ -18,12 +18,15 @@ class SmartDataLakeLanguageServer extends LanguageServer with LanguageClientAwar
     initializeResult.getCapabilities.setTextDocumentSync(TextDocumentSyncKind.Full)
     val completionOptions = new CompletionOptions
     initializeResult.getCapabilities.setCompletionProvider(completionOptions)
+
+    initializeResult.getCapabilities.setHoverProvider(true)
+
     CompletableFuture.supplyAsync(() => initializeResult)
   }
 
   override def shutdown(): CompletableFuture[AnyRef] = {
     errorCode = 0
-    null
+    CompletableFuture.completedFuture(null)
   }
 
   override def exit(): Unit = System.exit(errorCode)

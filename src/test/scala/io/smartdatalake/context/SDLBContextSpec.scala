@@ -36,31 +36,37 @@ class SDLBContextSpec extends UnitSpec {
     val line1Start = SDLBContext.fromText(text).withCaretPosition(1, 0)
     line1Start.parentPath shouldBe ""
     line1Start.parentWord shouldBe ""
+    line1Start.word shouldBe "global"
     line1Start.getParentContext shouldBe None
 
     val line1End = SDLBContext.fromText(text).withCaretPosition(1, 999)
     line1End.parentPath shouldBe "global"
     line1End.parentWord shouldBe "global"
+    line1End.word shouldBe "{"
     line1End.getParentContext shouldBe defined
 
     val line3Start = SDLBContext.fromText(text).withCaretPosition(3, 0)
     line3Start.parentPath shouldBe "global.spark-options"
     line3Start.parentWord shouldBe "spark-options"
+    line3Start.word shouldBe ""
     line3Start.getParentContext.get.unwrapped().asInstanceOf[java.util.HashMap[String, Int]].get("spark.sql.shuffle.partitions") shouldBe 2
 
     val line3End = SDLBContext.fromText(text).withCaretPosition(3, 999)
     line3End.parentPath shouldBe "global.spark-options.spark.sql.shuffle.partitions"
     line3End.parentWord shouldBe "\"spark.sql.shuffle.partitions\""
+    line3End.word shouldBe "2"
     //line3End.getParentContext shouldBe defined //TODO this one is a problem because of the key with dots
 
     val line5Start = SDLBContext.fromText(text).withCaretPosition(5, 0)
     line5Start.parentPath shouldBe "global"
     line5Start.parentWord shouldBe "global"
+    line5Start.word shouldBe "}"
     line5Start.getParentContext shouldBe defined
 
     val line5End = SDLBContext.fromText(text).withCaretPosition(5, 1)
     line5End.parentPath shouldBe ""
     line5End.parentWord shouldBe ""
+    line5End.word shouldBe "}"
     line5End.getParentContext shouldBe None
 
   }

@@ -5,6 +5,7 @@ import io.smartdatalake.utils.MultiLineTransformer.{computeCorrectedPosition, fl
 
 import scala.annotation.tailrec
 import scala.util.{Try, Success, Failure}
+import io.smartdatalake.context.hocon.{HoconTokens => Token}
 
 /**
  * Utility class to parse HOCON-formatted files
@@ -60,7 +61,6 @@ private[context] object HoconParser:
    * @return The direct parent
    */
   def retrieveDirectParent(text: String, line: Int, column: Int): (Int, String) =
-    import io.smartdatalake.context.hocon.{HoconTokens => Token}
 
     @tailrec
     /*
@@ -87,4 +87,25 @@ private[context] object HoconParser:
         (if keyName.isBlank then 0 else line, keyName)
       else
         retrieveHelper(line-1, 0)
+
+
+  def retrieveWordAtPosition(text: String, line: Int, col: Int): String =
+    def getWordAtIndex(textLine: String, index: Int): String =
+      val (leftPart, rightPart) = textLine.splitAt(index)
+      val leftPossibleIndex = leftPart.lastIndexOf(" ")
+      val leftIndex = if leftPossibleIndex == -1 then 0 else leftPossibleIndex
+      val rightPossibleIndex = rightPart.indexOf(" ")
+      val rightIndex = if rightPossibleIndex == -1 then textLine.length - 2 else index + rightPossibleIndex
+      textLine.substring(leftIndex, rightIndex).trim
+
+    val textLine = text.split(Token.NEW_LINE)(line-1) + " "
+    val column = math.min(textLine.length-1, col)
+    val leadingCharacter = textLine.charAt(column)
+    column match
+      case 0 if leadingCharacter.isWhitespace => ""
+      case _ if leadingCharacter.isWhitespace =>
+        val precedingCharacter = textLine.charAt(column-1)
+        if precedingCharacter.isWhitespace then "" else getWordAtIndex(textLine, column-1)
+
+      case _ => getWordAtIndex(textLine, column)
 

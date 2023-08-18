@@ -1,8 +1,8 @@
 package io.smartdatalake.completion
 
 import io.smartdatalake.completion.SDLBCompletionEngine
-import io.smartdatalake.completion.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl}
 import io.smartdatalake.context.SDLBContext
+import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl}
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 
 import scala.util.{Failure, Success, Try}

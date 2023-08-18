@@ -1,4 +1,4 @@
-package io.smartdatalake.completion.schema
+package io.smartdatalake.schema
 
 enum ItemType(val name: String, val defaultValue: String) {
   case STRING extends ItemType("string", "\"???\"")

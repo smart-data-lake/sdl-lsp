@@ -238,7 +238,38 @@ class HoconParserSpec extends UnitSpec {
   it should "parse silently incorrect files" in {
     HoconParser.parse("blah {") shouldBe None
   }
-  
+
+  it should "retrieve correctly hovered word in simple case" in {
+    val simpleText = "Hello SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 0) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 4) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 5) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 6) shouldBe "SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 10) shouldBe "SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 11) shouldBe "SDLB!"
+  }
+
+  it should "retrieve correctly hovered word in simple case with multiple spaces" in {
+    val simpleText = "Hello  SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 0) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 4) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 5) shouldBe "Hello"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 6) shouldBe ""
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 7) shouldBe "SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 11) shouldBe "SDLB!"
+    HoconParser.retrieveWordAtPosition(simpleText, 1, 12) shouldBe "SDLB!"
+  }
+
+  it should "retrieve correctly hovered word in text" in {
+    val fixture = loadFixture("fixture/hocon/with-comments-example.conf")
+    val text = fixture.text
+    HoconParser.retrieveWordAtPosition(text, 4, 0) shouldBe "global"
+    HoconParser.retrieveWordAtPosition(text, 4, 6) shouldBe "global"
+    HoconParser.retrieveWordAtPosition(text, 4, 7) shouldBe "{"
+    HoconParser.retrieveWordAtPosition(text, 6, 7) shouldBe "#\"spark.sql.shuffle.partitions\"" //TODO its a comment line, disable?
+    HoconParser.retrieveWordAtPosition(text, 7, 7) shouldBe "\"spark.sql.shuffle.partitions\"" //TODO its a string value, disable?
+
+  }
 
 
   private def validateText(fixture: Fixture, column: Int, caretDataList: List[CaretData], positionMap: Option[List[(Int, Int)]]=None): Unit =

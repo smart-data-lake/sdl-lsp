@@ -1,10 +1,11 @@
 package io.smartdatalake.languageserver
 
-import io.smartdatalake.completion.SDLBCompletionEngineImpl
+import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineImpl}
 import io.smartdatalake.context.SDLBContext
+import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
-import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
+import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
 
 import java.util
 import java.util.concurrent.CompletableFuture
@@ -14,6 +15,8 @@ import scala.util.Using
 class SmartDataLakeTextDocumentService extends TextDocumentService {
 
   private var context: SDLBContext = SDLBContext.EMPTY_CONTEXT
+  private val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl
+  private val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl //TODO DI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
 
@@ -47,7 +50,12 @@ class SmartDataLakeTextDocumentService extends TextDocumentService {
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = ???
 
-  override def hover(params: HoverParams): CompletableFuture[Hover] = super.hover(params) //TODO
+  override def hover(params: HoverParams): CompletableFuture[Hover] = {
+    CompletableFuture.supplyAsync(() => {
+      val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
+      hoverEngine.generateHoveringInformation(hoverContext)
+    })
+  }
 
   override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)
 

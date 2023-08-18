@@ -1,6 +1,7 @@
 package io.smartdatalake.completion.schema
 
 import io.smartdatalake.UnitSpec
+import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReaderImpl}
 import ujson.*
 
 import scala.io.Source
@@ -56,6 +57,14 @@ class SchemaReaderSpec extends UnitSpec {
 
     actual shouldBe expected
 
+  }
+
+  it should "retrieve some action property description" in {
+    val inputIdDescriptionOfCopyAction = schemaReader.retrieveActionPropertyDescription("CopyAction", "inputId")
+    inputIdDescriptionOfCopyAction shouldBe "inputs DataObject"
+
+    val overwriteDescriptionOfFileTransferAction = schemaReader.retrieveActionPropertyDescription("FileTransferAction", "overwrite")
+    overwriteDescriptionOfFileTransferAction shouldBe "Allow existing output file to be overwritten. If false the action will fail if a file to be created already exists. Default is true."
   }
 
 

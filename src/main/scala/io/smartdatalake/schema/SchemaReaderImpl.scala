@@ -1,4 +1,4 @@
-package io.smartdatalake.completion.schema
+package io.smartdatalake.schema
 
 import scala.io.Source
 import scala.util.Using
@@ -8,6 +8,12 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
   private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
     Source.fromInputStream(inputStream).getLines().mkString("\n").trim
   })
+
+
+  override def retrieveActionPropertyDescription(typeName: String, propertyName: String): String =
+    schema("definitions")("Action").obj.get(typeName)
+      .flatMap(typeContext => typeContext("properties").obj.get(propertyName))
+      .flatMap(property => property.obj.get("description").map(_.str)).getOrElse("")
 
   override def retrieveActionProperties(typeName: String): Iterable[SchemaItem] =
     schema("definitions")("Action").obj.get(typeName) match
