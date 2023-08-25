@@ -25,7 +25,9 @@
     <encoding>UTF-8</encoding>
     <scala.version>3.3.0</scala.version> <!-- Scala 2.12 not working because of copies of annotations issues -->
     <lsp4j.version>0.21.0</lsp4j.version>
-    <typesafe.version>1.4.2</typesafe.version>
+    <typesafe.config.version>1.4.2</typesafe.config.version>
+    <ujson.version>3.1.2</ujson.version>
+    <logback.version>1.4.11</logback.version>
   </properties>
 
 
@@ -47,13 +49,20 @@
     <dependency>
       <groupId>com.typesafe</groupId>
       <artifactId>config</artifactId>
-      <version>${typesafe.version}</version>
+      <version>${typesafe.config.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.lihaoyi</groupId>
       <artifactId>ujson_3</artifactId>
-      <version>3.1.2</version>
+      <version>${ujson.version}</version>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>${logback.version}</version>
     </dependency>
 
 
