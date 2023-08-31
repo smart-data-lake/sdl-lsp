@@ -4,29 +4,29 @@ import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineIm
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
 import io.smartdatalake.schema.SchemaReader
+import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
 
 import java.util
 import java.util.concurrent.CompletableFuture
+import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 import scala.util.Using
 
-class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine, private val hoverEngine: SDLBHoverEngine) extends TextDocumentService {
+class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine, private val hoverEngine: SDLBHoverEngine)(using ExecutionContext) extends TextDocumentService {
 
   private var context: SDLBContext = SDLBContext.EMPTY_CONTEXT
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
 
-    CompletableFuture.supplyAsync(() => {
-      context = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
-      val completionItems = new util.ArrayList[CompletionItem]()
-      val suggestions: List[CompletionItem] = completionEngine.generateCompletionItems(context)
-      suggestions.foreach(e => completionItems.add(e))
+    Future {
+      val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
+      val completionItems: util.List[CompletionItem] = completionEngine.generateCompletionItems(caretContext).toJava
+      Left(completionItems).toJava
+    }.toJava
 
-      messages.Either.forLeft(completionItems).asInstanceOf[messages.Either[util.List[CompletionItem], CompletionList]]
-    })
   }
 
   override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
@@ -50,10 +50,10 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = ???
 
   override def hover(params: HoverParams): CompletableFuture[Hover] = {
-    CompletableFuture.supplyAsync(() => {
+    Future {
       val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
       hoverEngine.generateHoveringInformation(hoverContext)
-    })
+    }.toJava
   }
 
   override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)

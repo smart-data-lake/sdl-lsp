@@ -8,9 +8,7 @@ import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 import scala.util.{Failure, Success, Try}
 
 class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends SDLBCompletionEngine {
-
-  //val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json") //TODO should be retrieved from a service keeping its state, object for example
-
+  
   override def generateCompletionItems(context: SDLBContext): List[CompletionItem] = context.parentPath match
     case path if path.startsWith("actions") && path.count(_ == '.') == 1 => generatePropertiesOfAction(context)
     case "actions"  => generateTemplatesForAction()

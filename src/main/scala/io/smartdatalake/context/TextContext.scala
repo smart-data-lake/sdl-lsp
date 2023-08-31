@@ -12,7 +12,7 @@ case class TextContext private (originalText: String, configText: String, config
     case _ => updateContext(newText)
 
   private def updateContext(newText: String) =
-    val newConfigText = MultiLineTransformer.flattenMultiLines(newText) // For now. We'll see how to optimize incr. parsing and how to handle multiple files later
+    val newConfigText = MultiLineTransformer.flattenMultiLines(newText)
     val newConfig = HoconParser.parse(newConfigText).getOrElse(HoconParser.EMPTY_CONFIG)
     if newConfig == HoconParser.EMPTY_CONFIG then this else TextContext(newText, newConfigText, newConfig)
 

@@ -1,13 +1,19 @@
 package io.smartdatalake
 
-import io.smartdatalake.logging.LoggingManager
+import ch.qos.logback.classic.Level
+import io.smartdatalake.logging.{LoggerOutputStream, LoggingManager}
 import io.smartdatalake.modules.AppModule
+import jdk.jshell.spi.ExecutionControlProvider
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, LanguageServer}
 
-import java.io.{InputStream, OutputStream, PrintStream}
+import java.io.{InputStream, OutputStream, PrintStream, PrintWriter}
 import org.slf4j.LoggerFactory
+
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
 
 /**
  * @author scalathe
@@ -29,15 +35,34 @@ object Main extends AppModule {
   }
 
   private def startServer(in: InputStream, out: PrintStream) = {
-    val helloLanguageServer: LanguageServer & LanguageClientAware = languageServer
-    val launcher: Launcher[LanguageClient] = LSPLauncher.createServerLauncher(helloLanguageServer, in, out)
-    val client: LanguageClient = launcher.getRemoteProxy
-
-    helloLanguageServer.connect(client)
-    // Use the configured logger
     val logger = LoggerFactory.getLogger(getClass)
-    logger.info("Server starts listening...")
-    launcher.startListening().get()
+    val helloLanguageServer: LanguageServer & LanguageClientAware = languageServer
+
+    try
+      val launcher: Launcher[LanguageClient] = Launcher.Builder[LanguageClient]()
+        .traceMessages(PrintWriter(LoggingManager.createPrintStreamWithLoggerName("jsonRpcLogger", level = Level.TRACE)))
+        .setExecutorService(executorService)
+        .setInput(in)
+        .setOutput(out)
+        .setRemoteInterface(classOf[LanguageClient])
+        .setLocalService(helloLanguageServer)
+        .create()
+
+      val client: LanguageClient = launcher.getRemoteProxy
+      helloLanguageServer.connect(client)
+      // Use the configured logger
+      logger.info("Server starts listening...")
+      launcher.startListening().get()
+    catch
+      case NonFatal(ex) =>
+        ex.printStackTrace(out)
+        logger.error(ex.toString)
+
+    finally
+      // Might want to also give capabilities to let the server shutdown itself more properly
+      executionContext.shutdownNow()
+      executorService.shutdownNow()
+      sys.exit(0)
   }
 
 }

@@ -2,9 +2,9 @@
 
     <!-- Appender to write logs to a file -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/myapp.log</file> <!-- Change the file name as needed -->
+        <file>logs/sdl-lsp.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/myapp.%i.log</fileNamePattern>
+            <fileNamePattern>logs/sdl-lsp.%i.log</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>10</maxIndex>
         </rollingPolicy>
