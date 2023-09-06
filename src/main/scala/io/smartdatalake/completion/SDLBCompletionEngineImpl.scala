@@ -9,7 +9,7 @@ import scala.util.{Failure, Success, Try}
 
 class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends SDLBCompletionEngine {
   
-  override def generateCompletionItems(context: SDLBContext): List[CompletionItem] = context.parentPath match
+  override def generateCompletionItems(context: SDLBContext): List[CompletionItem] = context.parentPath match //TODO split path by '.' and handle logic if element list or not like that? Carry over the new config like that too?
     case path if path.startsWith("actions") && path.count(_ == '.') == 1 => generatePropertiesOfAction(context)
     case "actions"  => generateTemplatesForAction()
     case path if path.startsWith("actions") => List.empty[CompletionItem] //TODO when going deeper find a good recursive approach and mb merge it with first case
@@ -37,7 +37,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
 
   private def generatePropertiesOfAction(context: SDLBContext): List[CompletionItem] =
     def isMissingInConfig(item: SchemaItem): Boolean = Try(context.textContext.config.getAnyRef(context.parentPath + "." + item.name)).isFailure
-    val tActionType: Try[String] = Try(context.textContext.config.getString(context.parentPath + ".type"))
+    val tActionType: Try[String] = Try(context.textContext.config.getString(context.parentPath + ".type")) // In list, it looks like fixture.config.getList("actions.select-airport-cols.transformers").get(0).asInstanceOf[ConfigObject].get("type").unwrapped()
     tActionType match
       case Success(actionType) => schemaReader.retrieveActionProperties(actionType).filter(isMissingInConfig).map(createCompletionItem).toList
       case Failure(_) => typeList

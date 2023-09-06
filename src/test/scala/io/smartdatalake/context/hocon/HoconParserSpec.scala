@@ -11,7 +11,7 @@ import scala.util.Using
 class HoconParserSpec extends UnitSpec {
 
   val (leftCol, rightCol) = (0, 999)
-  case class CaretData(line: Int, column: Int, parentLine: Int, parentName: String, path: String)
+  case class CaretData(line: Int, column: Int, parentLine: Int, parentName: String, path: String, oIndex: Option[Int]=None)
   case class Fixture(originalText: String, text: String, config: Config)
 
   "Hocon parser" should "find path in hocon file" in {
@@ -144,7 +144,7 @@ class HoconParserSpec extends UnitSpec {
 
   }
 
-  it should "find path in file with lists" in { //TODO not correct yet
+  it should "find path in file with lists" in { //TODO test nested lists
     val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
 
 
@@ -155,9 +155,9 @@ class HoconParserSpec extends UnitSpec {
       CaretData(4, leftCol, 2, "select-airport-cols", "actions.select-airport-cols"),
       CaretData(5, leftCol, 2, "select-airport-cols", "actions.select-airport-cols"),
       CaretData(6, leftCol, 2, "select-airport-cols", "actions.select-airport-cols"),
-      CaretData(7, leftCol, 6, "transformers", "actions.select-airport-cols.transformers"),
-      CaretData(8, leftCol, 6, "transformers", "actions.select-airport-cols.transformers"),
-      CaretData(9, leftCol, 6, "transformers", "actions.select-airport-cols.transformers"),
+      CaretData(7, leftCol, 6, "transformers", "actions.select-airport-cols.transformers", Some(0)),
+      CaretData(8, leftCol, 6, "transformers", "actions.select-airport-cols.transformers", Some(0)),
+      CaretData(9, leftCol, 6, "transformers", "actions.select-airport-cols.transformers", Some(0)),
       CaretData(10, leftCol, 2, "select-airport-cols", "actions.select-airport-cols"),
       CaretData(11, leftCol, 10, "metadata", "actions.select-airport-cols.metadata"),
       CaretData(12, leftCol, 10, "metadata", "actions.select-airport-cols.metadata"),
@@ -168,25 +168,24 @@ class HoconParserSpec extends UnitSpec {
       CaretData(17, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(18, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(19, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
-      CaretData(20, leftCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(21, leftCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(22, leftCol, 21, "code", ""), //TODO investigate why code is not found. That might help understanding how lists are generally handled by HOCON
-      CaretData(23, leftCol, 21, "code", ""),
+      CaretData(20, leftCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(0)),
+      CaretData(21, leftCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(0)),
+      CaretData(22, leftCol, 21, "code", "actions.join-departures-airports.transformers.0.code", Some(0)),
+      CaretData(23, leftCol, 21, "code", "actions.join-departures-airports.transformers.0.code", Some(0)),
       CaretData(24, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
-      CaretData(25, leftCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(26, leftCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(27, leftCol, 26, "code", ""),
-      CaretData(28, leftCol, 26, "code", ""),
-      CaretData(29, leftCol, 19, "transformers", "actions.join-departures-airports.transformers"),
+      CaretData(25, leftCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(1)),
+      CaretData(26, leftCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(1)),
+      CaretData(27, leftCol, 26, "code", "actions.join-departures-airports.transformers.1.code", Some(1)),
+      CaretData(28, leftCol, 26, "code", "actions.join-departures-airports.transformers.1.code", Some(1)),
+      CaretData(29, leftCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(1)),
       CaretData(30, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(31, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(32, leftCol, 31, "metadata", "actions.join-departures-airports.metadata"),
       CaretData(33, leftCol, 31, "metadata", "actions.join-departures-airports.metadata"),
       CaretData(34, leftCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(35, leftCol, 1, "actions", "actions")
-    ) // fixture.config.getValue("actions.join-departures-airports.transformers").asInstanceOf[com.typesafe.config.ConfigList].get(0).origin() == 19
-    // fixture.config.getValue("actions.join-departures-airports.transformers").asInstanceOf[com.typesafe.config.ConfigList].get(0).asInstanceOf[com.typesafe.config.ConfigObject].toConfig.getValue("code").origin() == 21
-
+    )
+    
     validateText(fixture, leftCol, leftCaretData)
 
     val rightCaretData = List(
@@ -195,9 +194,9 @@ class HoconParserSpec extends UnitSpec {
       CaretData(3, rightCol, 3, "type", "actions.select-airport-cols.type"),
       CaretData(4, rightCol, 4, "inputId", "actions.select-airport-cols.inputId"),
       CaretData(5, rightCol, 5, "outputId", "actions.select-airport-cols.outputId"),
-      CaretData(6, rightCol, 6, "transformers", "actions.select-airport-cols.transformers"),
-      CaretData(7, rightCol, 7, "type", ""),
-      CaretData(8, rightCol, 8, "code", ""),
+      CaretData(6, rightCol, 6, "transformers", "actions.select-airport-cols.transformers", Some(0)),
+      CaretData(7, rightCol, 7, "type", "actions.select-airport-cols.transformers.0.type", Some(0)),
+      CaretData(8, rightCol, 8, "code", "actions.select-airport-cols.transformers.0.code", Some(0)),
       CaretData(9, rightCol, 2, "select-airport-cols", "actions.select-airport-cols"),
       CaretData(10, rightCol, 10, "metadata", "actions.select-airport-cols.metadata"),
       CaretData(11, rightCol, 11, "feed", "actions.select-airport-cols.metadata.feed"),
@@ -208,16 +207,16 @@ class HoconParserSpec extends UnitSpec {
       CaretData(16, rightCol, 16, "type", "actions.join-departures-airports.type"),
       CaretData(17, rightCol, 17, "inputIds", "actions.join-departures-airports.inputIds"),
       CaretData(18, rightCol, 18, "outputIds", "actions.join-departures-airports.outputIds"),
-      CaretData(19, rightCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(20, rightCol, 20, "type", ""),
-      CaretData(21, rightCol, 21, "code", ""),
-      CaretData(22, rightCol, 22, "btl-connected-airports", ""),
+      CaretData(19, rightCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(0)),
+      CaretData(20, rightCol, 20, "type", "actions.join-departures-airports.transformers.0.type", Some(0)),
+      CaretData(21, rightCol, 21, "code", "actions.join-departures-airports.transformers.0.code", Some(0)),
+      CaretData(22, rightCol, 22, "btl-connected-airports", "actions.join-departures-airports.transformers.0.code.btl-connected-airports", Some(0)),
       CaretData(23, rightCol, 19, "transformers", "actions.join-departures-airports.transformers"),
-      CaretData(24, rightCol, 0, "", ""),
-      CaretData(25, rightCol, 25, "type", ""),
-      CaretData(26, rightCol, 26, "code", ""),
-      CaretData(27, rightCol, 27, "btl-departures-arrivals-airports", ""),
-      CaretData(28, rightCol, 19, "transformers", "actions.join-departures-airports.transformers"),
+      CaretData(24, rightCol, 0, "", "", Some(1)),
+      CaretData(25, rightCol, 25, "type", "actions.join-departures-airports.transformers.1.type", Some(1)),
+      CaretData(26, rightCol, 26, "code", "actions.join-departures-airports.transformers.1.code", Some(1)),
+      CaretData(27, rightCol, 27, "btl-departures-arrivals-airports", "actions.join-departures-airports.transformers.1.code.btl-departures-arrivals-airports", Some(1)),
+      CaretData(28, rightCol, 19, "transformers", "actions.join-departures-airports.transformers", Some(1)),
       CaretData(29, rightCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(30, rightCol, 15, "join-departures-airports", "actions.join-departures-airports"),
       CaretData(31, rightCol, 31, "metadata", "actions.join-departures-airports.metadata"),
@@ -271,6 +270,77 @@ class HoconParserSpec extends UnitSpec {
 
   }
 
+  it should "transform line column position to absolute position" in {
+    val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
+    val text = fixture.text
+
+    HoconParser.lineColToAbsolutePosition(text, 1, 4) shouldBe 4
+    HoconParser.lineColToAbsolutePosition(text, 1, 999) shouldBe 9
+    HoconParser.lineColToAbsolutePosition(text, 3, 4) shouldBe 38
+    HoconParser.lineColToAbsolutePosition(text, 3, 999) shouldBe 55
+    HoconParser.lineColToAbsolutePosition(text, 17, 16) shouldBe 376
+    HoconParser.lineColToAbsolutePosition(text, 17, 43) shouldBe 403
+    HoconParser.lineColToAbsolutePosition(text, 19, 20) shouldBe 477
+    HoconParser.lineColToAbsolutePosition(text, 30, 4) shouldBe 715
+  }
+
+  it should "find list areas with simple cases" in {
+    val simpleText = "[]"
+
+    HoconParser.findListAreaFrom(simpleText, 0) shouldBe None
+    HoconParser.findListAreaFrom(simpleText, 1) shouldBe Some((1, 1))
+    HoconParser.findListAreaFrom(simpleText, 2) shouldBe None
+
+    val mediumText = "[[]]"
+    HoconParser.findListAreaFrom(mediumText, 0) shouldBe None
+    HoconParser.findListAreaFrom(mediumText, 1) shouldBe Some((1, 3))
+    HoconParser.findListAreaFrom(mediumText, 2) shouldBe Some((2, 2))
+    HoconParser.findListAreaFrom(mediumText, 3) shouldBe Some((1, 3))
+    HoconParser.findListAreaFrom(mediumText, 4) shouldBe None
+
+    val harderText = "[[ ]][   ]"
+    HoconParser.findListAreaFrom(harderText, 0) shouldBe None
+    HoconParser.findListAreaFrom(harderText, 1) shouldBe Some((1, 4))
+    HoconParser.findListAreaFrom(harderText, 2) shouldBe Some((2, 3))
+    HoconParser.findListAreaFrom(harderText, 3) shouldBe Some((2, 3))
+    HoconParser.findListAreaFrom(harderText, 4) shouldBe Some((1, 4))
+    HoconParser.findListAreaFrom(harderText, 5) shouldBe None
+    HoconParser.findListAreaFrom(harderText, 6) shouldBe Some((6, 9))
+    HoconParser.findListAreaFrom(harderText, 7) shouldBe Some((6, 9))
+    HoconParser.findListAreaFrom(harderText, 8) shouldBe Some((6, 9))
+    HoconParser.findListAreaFrom(harderText, 9) shouldBe Some((6, 9))
+    HoconParser.findListAreaFrom(harderText, 10) shouldBe None
+  }
+
+  it should "find list areas with fixture" in {
+    val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
+    val text = fixture.text
+
+
+    HoconParser.findListAreaFrom(text, 376) shouldBe Some((376, 404)) // 376 == (17, 16), 403 == (17, 43)
+    HoconParser.findListAreaFrom(text, 375) shouldBe None
+    HoconParser.findListAreaFrom(text, 405) shouldBe None
+
+    HoconParser.findListAreaFrom(text, 516) shouldBe Some((477, 715)) // 516 == (21, 6)
+
+    HoconParser.findListAreaFrom(text, 38) shouldBe None
+    HoconParser.findListAreaFrom(text, 716) shouldBe None
+
+  }
+
+  it should "find index of currentList" in {
+    val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
+    val text = fixture.text
+
+    HoconParser.findIndexIfInList(text, 1, 0) shouldBe None
+    HoconParser.findIndexIfInList(text, 17, 20) shouldBe None
+    HoconParser.findIndexIfInList(text, 22, 0) shouldBe Some(0)
+    HoconParser.findIndexIfInList(text, 23, 8) shouldBe None
+    HoconParser.findIndexIfInList(text, 27, 0) shouldBe Some(1)
+    HoconParser.findIndexIfInList(text, 32, 0) shouldBe None
+
+  }
+
 
   private def validateText(fixture: Fixture, column: Int, caretDataList: List[CaretData], positionMap: Option[List[(Int, Int)]]=None): Unit =
     val totalLines = fixture.originalText.count(_ == '\n') + 1
@@ -279,7 +349,8 @@ class HoconParserSpec extends UnitSpec {
       val columnNumber = positionMap.map(pm => pm(i-1)(1) + column).getOrElse(column)
       val (line, word) = HoconParser.retrieveDirectParent(fixture.text, lineNumber, columnNumber)
       val path = HoconParser.retrievePath(fixture.config, line)
-      val caretData = CaretData(lineNumber, columnNumber, line, word, path)
+      val oIndex = HoconParser.findIndexIfInList(fixture.text, lineNumber, columnNumber)
+      val caretData = CaretData(lineNumber, columnNumber, line, word, path, oIndex)
       caretData should be(caretDataList(i - 1))
 
 

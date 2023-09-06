@@ -6,7 +6,7 @@ import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
 
-case class SDLBContext private(textContext: TextContext, parentPath: String, parentWord: String, word: String) {
+case class SDLBContext private(textContext: TextContext, parentPath: String, parentWord: String, word: String, oIndex: Option[Int]) {
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
 
@@ -17,7 +17,8 @@ case class SDLBContext private(textContext: TextContext, parentPath: String, par
       val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol)
       val (parentLine, parentWord) = HoconParser.retrieveDirectParent(configText, newLine, newCol)
       val path = HoconParser.retrievePath(config, parentLine)
-      copy(parentPath = path, parentWord = parentWord, word = word)
+      val oIndex = HoconParser.findIndexIfInList(configText, newLine, newCol)
+      copy(parentPath = path, parentWord = parentWord, word = word, oIndex = oIndex)
 
 
   //TODO keep that method?
@@ -27,9 +28,9 @@ case class SDLBContext private(textContext: TextContext, parentPath: String, par
 }
 
 object SDLBContext {
-  val EMPTY_CONTEXT: SDLBContext = SDLBContext(EMPTY_TEXT_CONTEXT, "", "", "")
+  val EMPTY_CONTEXT: SDLBContext = SDLBContext(EMPTY_TEXT_CONTEXT, "", "", "", None)
 
-  def fromText(originalText: String): SDLBContext = SDLBContext(TextContext.create(originalText), "", "", "")
+  def fromText(originalText: String): SDLBContext = SDLBContext(TextContext.create(originalText), "", "", "", None)
 
 }
 

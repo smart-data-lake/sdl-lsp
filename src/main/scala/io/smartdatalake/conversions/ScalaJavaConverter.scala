@@ -1,16 +1,22 @@
 package io.smartdatalake.conversions
 
+import com.typesafe.config.{ConfigList, ConfigValue}
+
 import java.util.concurrent.CompletableFuture
 import org.eclipse.lsp4j.jsonrpc.messages
+
 import scala.concurrent.Future
 import scala.jdk.FutureConverters.*
 import scala.jdk.CollectionConverters.*
+import java.util.List as JList
 
 trait ScalaJavaConverter {
 
   extension [T] (f: Future[T]) def toJava: CompletableFuture[T] = f.asJava.toCompletableFuture
 
-  extension [T] (l: List[T]) def toJava: java.util.List[T] = l.asJava
+  extension [T] (l: List[T]) def toJava: JList[T] = l.asJava
+  
+  extension [T] (l: JList[T]) def toScala: List[T] = l.asScala.toList
   
   extension [L, R] (either: Either[L, R]) def toJava: messages.Either[L, R] = either match
     case Left(leftValue) => messages.Either.forLeft(leftValue)

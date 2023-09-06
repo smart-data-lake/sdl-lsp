@@ -1,11 +1,14 @@
 package io.smartdatalake.context.hocon
 
-import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigObject}
+import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.utils.MultiLineTransformer.{computeCorrectedPosition, flattenMultiLines}
 
+import java.util.Map.Entry as JEntry
+
 import scala.annotation.tailrec
-import scala.util.{Try, Success, Failure}
-import io.smartdatalake.context.hocon.{HoconTokens => Token}
+import scala.util.{Failure, Success, Try}
+import io.smartdatalake.context.hocon.HoconTokens as Token
+import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 
 /**
  * Utility class to parse HOCON-formatted files
@@ -33,6 +36,13 @@ private[context] object HoconParser:
    * @return path in format "a.b.c"
    */
   def retrievePath(config: Config, line: Int): String =
+    def matchTypeValueAndSearchRecursive(key: String, configValue: ConfigValue, currentPath: String): Option[String] = {
+      configValue match
+        case configList: ConfigList => configList.toScala.zipWithIndex.flatMap{ (config, index) => matchTypeValueAndSearchRecursive(index.toString, config, currentPath + "." + key)}.headOption
+        case configObject: ConfigObject => searchPath(configObject, currentPath + "." + key)
+        case _ => None
+    }
+
     def searchPath(currentConfig: ConfigObject, currentPath: String): Option[String] =
       import scala.jdk.CollectionConverters._
 
@@ -42,10 +52,7 @@ private[context] object HoconParser:
         case Some(entry) =>
           Some(currentPath + "." + entry.getKey)
         case None =>
-          entrySet.flatMap { entry => // small caviat: still continue to look at the neighbor's level of the parent of the endpoint.
-            entry.getValue match
-              case configObject: ConfigObject => searchPath(configObject, currentPath + "." + entry.getKey)
-              case _ => None
+          entrySet.flatMap { entry => matchTypeValueAndSearchRecursive(entry.getKey, entry.getValue, currentPath)
           }.headOption
 
     searchPath(config.root(), "").getOrElse("").stripPrefix(".")
@@ -71,7 +78,7 @@ private[context] object HoconParser:
         (0, "")
       else
         val textLine = text.split(Token.NEW_LINE)(line-1).filterNot(c => c.isWhitespace || c == Token.START_LIST || c == Token.END_LIST).takeWhile(_ != Token.COMMENT).mkString
-        val newDepth = depth - textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.END_OBJECT) - textLine.count(_ == Token.END_LIST) + textLine.count(_ == Token.START_LIST) //TODO handle list better
+        val newDepth = depth - textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.END_OBJECT) - textLine.count(_ == Token.END_LIST) + textLine.count(_ == Token.START_LIST)
         if textLine.contains(Token.END_OBJECT) then retrieveHelper(line-1, newDepth) else
           textLine.split(Token.KEY_VAL_SPLIT_REGEX) match
             case Array(singleBlock) => if singleBlock.isBlank then retrieveHelper(line-1, newDepth) else if depth == 0 then (line, singleBlock) else retrieveHelper(line-1, newDepth)
@@ -109,3 +116,55 @@ private[context] object HoconParser:
 
       case _ => getWordAtIndex(textLine, column)
 
+
+  def findIndexIfInList(text: String, line: Int, column: Int): Option[Int] =
+    val absolutePosition = lineColToAbsolutePosition(text, line, column)
+    findListAreaFrom(text, absolutePosition) match
+      case None => None
+      case Some((startPosition, endPosition)) =>
+        @tailrec
+        def buildObjectPositions(currentPosition: Int, currentList: List[(Int, Int)]): List[(Int, Int)] = //TODO unit test?
+          val nextStartObjectTokenRelativePosition = text.substring(currentPosition).indexOf(Token.START_OBJECT)
+          if nextStartObjectTokenRelativePosition == -1 then
+            currentList
+          else
+            val nextStartObjectTokenAbsolutePosition = nextStartObjectTokenRelativePosition + currentPosition
+            if nextStartObjectTokenAbsolutePosition > endPosition then
+              currentList
+            else
+              findObjectAreaFrom(text, nextStartObjectTokenAbsolutePosition + 1) match // +1 to enter in the object
+                case None => currentList
+                case Some((start, end)) => buildObjectPositions(end + 1, (start, end)::currentList)
+
+        val objectPositions = buildObjectPositions(startPosition, List.empty[(Int, Int)]).reverse
+        objectPositions
+          .zipWithIndex
+          .find{(bounds, _) => absolutePosition >= bounds(0) && absolutePosition <= bounds(1)}
+          .map(_._2)
+
+
+
+
+
+  private[hocon] def findObjectAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_OBJECT, Token.END_OBJECT)
+  private[hocon] def findListAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_LIST, Token.END_LIST)
+
+  private def findAreaFrom(text: String, position: Int, startToken: Char, endToken: Char): Option[(Int, Int)] =
+    @tailrec
+    def indexOfWithDepth(char: Char, oppositeChar: Char, position: Int, direction: 1 | -1, depth: Int=0): Int =
+      assert(depth >= 0)
+      if position < 0 || position == text.length then -1 else text(position) match
+      case c if c == char && depth == 0 => position
+      case c if c == char               => indexOfWithDepth(char, oppositeChar, position + direction, direction, depth - 1)
+      case c if c == oppositeChar       => indexOfWithDepth(char, oppositeChar, position + direction, direction, depth + 1)
+      case _                            => indexOfWithDepth(char, oppositeChar, position + direction, direction, depth)
+
+    val startPosition = indexOfWithDepth(startToken, endToken, position-1, -1)
+    val endPosition = indexOfWithDepth(endToken, startToken, position, 1)
+    if startPosition != -1 && endPosition != -1 then Some((startPosition+1, endPosition)) else None // (...+1, ...-1) to exclude list characters themselves
+
+  private[hocon] def lineColToAbsolutePosition(text: String, line: Int, column: Int): Int =
+    val textLine = text.split(Token.NEW_LINE)
+    val nCharactersBeforeCurrentLine = textLine.take(line-1).map(line => line.length + 1).sum // +1 for \n character
+    val nCharactersCurrentLine = math.min(textLine(line-1).length, column)
+    nCharactersCurrentLine + nCharactersBeforeCurrentLine
