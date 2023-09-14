@@ -1,5 +1,7 @@
 package io.smartdatalake.schema
 
+import org.slf4j.LoggerFactory
+
 enum ItemType(val name: String, val defaultValue: String) {
   case STRING extends ItemType("string", "\"???\"")
   case BOOLEAN extends ItemType("boolean", "true")
@@ -14,9 +16,14 @@ enum ItemType(val name: String, val defaultValue: String) {
 }
 
 object ItemType:
+  private val logger = LoggerFactory.getLogger(ItemType.getClass)
   def fromName(name: String): ItemType = name match
     case "string" => ItemType.STRING
     case "boolean" => ItemType.BOOLEAN
     case "integer" => ItemType.INTEGER
     case "object" => ItemType.OBJECT
     case "array" => ItemType.ARRAY
+    case _ => 
+      logger.warn("Attempt to translate unknown type: {}", name)
+      ItemType.STRING
+      

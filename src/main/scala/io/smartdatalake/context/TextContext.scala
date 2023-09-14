@@ -5,7 +5,7 @@ import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
 
-case class TextContext private (originalText: String, configText: String, config: Config) {
+case class TextContext private (originalText: String, configText: String, rootConfig: Config) {
 
   def update(newText: String): TextContext = this match
     case EMPTY_TEXT_CONTEXT => TextContext.create(newText)

@@ -10,65 +10,94 @@ import scala.util.Using
 
 class SDLBContextSpec extends UnitSpec {
 
-  private val text: String = loadFile("fixture/hocon/basic-example.conf")
+  private val basicText: String = loadFile("fixture/hocon/basic-example.conf")
+  private val withListText: String = loadFile("fixture/hocon/with-lists-example.conf")
 
 
   "Smart DataLake Builder Context" should "creates a context with empty config if text is empty" in {
-    SDLBContext.fromText("").textContext.config shouldBe HoconParser.EMPTY_CONFIG
+    SDLBContext.fromText("").textContext.rootConfig shouldBe HoconParser.EMPTY_CONFIG
   }
 
   it should "creates a context with empty config if text is invalid" in {
-    SDLBContext.fromText("blah {").textContext.config shouldBe HoconParser.EMPTY_CONFIG
+    SDLBContext.fromText("blah {").textContext.rootConfig shouldBe HoconParser.EMPTY_CONFIG
   }
 
   it should "not update the context if line is invalid" in {
-    val initialContext = SDLBContext.fromText(text)
+    val initialContext = SDLBContext.fromText(basicText)
     initialContext.withCaretPosition(0, 1) shouldBe initialContext
     initialContext.withCaretPosition(23, 1) shouldBe initialContext
   }
 
   it should "not update the context if col is invalid" in {
-    val initialContext = SDLBContext.fromText(text)
+    val initialContext = SDLBContext.fromText(basicText)
     initialContext.withCaretPosition(1, -1) shouldBe initialContext
   }
 
-  it should "creates a context correctly with a basic example" in {
-    val line1Start = SDLBContext.fromText(text).withCaretPosition(1, 0)
-    line1Start.parentPath shouldBe ""
-    line1Start.parentWord shouldBe ""
+  it should "create a context correctly with a basic example" in {
+    val line1Start = SDLBContext.fromText(basicText).withCaretPosition(1, 0)
+    line1Start.parentPath shouldBe List()
     line1Start.word shouldBe "global"
-    line1Start.getParentContext shouldBe None
 
-    val line1End = SDLBContext.fromText(text).withCaretPosition(1, 999)
-    line1End.parentPath shouldBe "global"
-    line1End.parentWord shouldBe "global"
+    val line1End = SDLBContext.fromText(basicText).withCaretPosition(1, 999)
+    line1End.parentPath shouldBe List("global")
     line1End.word shouldBe "{"
-    line1End.getParentContext shouldBe defined
 
-    val line3Start = SDLBContext.fromText(text).withCaretPosition(3, 0)
-    line3Start.parentPath shouldBe "global.spark-options"
-    line3Start.parentWord shouldBe "spark-options"
+    val line3Start = SDLBContext.fromText(basicText).withCaretPosition(3, 0)
+    line3Start.parentPath shouldBe List("global", "spark-options")
     line3Start.word shouldBe ""
-    line3Start.getParentContext.get.unwrapped().asInstanceOf[java.util.HashMap[String, Int]].get("spark.sql.shuffle.partitions") shouldBe 2
 
-    val line3End = SDLBContext.fromText(text).withCaretPosition(3, 999)
-    line3End.parentPath shouldBe "global.spark-options.spark.sql.shuffle.partitions"
-    line3End.parentWord shouldBe "\"spark.sql.shuffle.partitions\""
+    val line3End = SDLBContext.fromText(basicText).withCaretPosition(3, 999)
+    line3End.parentPath shouldBe List("global", "spark-options", "spark.sql.shuffle.partitions")
     line3End.word shouldBe "2"
-    //line3End.getParentContext shouldBe defined //TODO this one is a problem because of the key with dots
 
-    val line5Start = SDLBContext.fromText(text).withCaretPosition(5, 0)
-    line5Start.parentPath shouldBe "global"
-    line5Start.parentWord shouldBe "global"
+    val line5Start = SDLBContext.fromText(basicText).withCaretPosition(5, 0)
+    line5Start.parentPath shouldBe List("global")
     line5Start.word shouldBe "}"
-    line5Start.getParentContext shouldBe defined
 
-    val line5End = SDLBContext.fromText(text).withCaretPosition(5, 1)
-    line5End.parentPath shouldBe ""
-    line5End.parentWord shouldBe ""
+    val line5End = SDLBContext.fromText(basicText).withCaretPosition(5, 1)
+    line5End.parentPath shouldBe List()
     line5End.word shouldBe "}"
-    line5End.getParentContext shouldBe None
 
+  }
+
+  it should "create a context correctly with lists" in {
+    val line7End = SDLBContext.fromText(withListText).withCaretPosition(7, 999)
+    line7End.parentPath shouldBe List("actions", "select-airport-cols", "transformers", "0", "type")
+    line7End.word shouldBe "SQLDfTransformer"
+
+    val line23EdgeInside = SDLBContext.fromText(withListText).withCaretPosition(23, 7)
+    line23EdgeInside.parentPath shouldBe List("actions", "join-departures-airports", "transformers", "0")
+    line23EdgeInside.word shouldBe "}},"
+
+    val line24EdgeInsideAgain = SDLBContext.fromText(withListText).withCaretPosition(24, 7)
+    line24EdgeInsideAgain.parentPath shouldBe List("actions", "join-departures-airports", "transformers", "1")
+    line24EdgeInsideAgain.word shouldBe "{"
+
+    //TODO:
+    // 3. Adapt SDLBCompletionEngine and HoverEngine
+    // 4. Adapt all necessary tests => especially SchemaContextSpec and SDLBCompletionEngineSpec and SDLBHoverEngineSpec and maybe SchemaReaderSpec
+
+    // KNOWN PROBLEMS
+    // 1. executionMode has its oneOf not generating templates
+    // >>>>>>>>>2. executionMode with a provided type does not generate properties <<<<<<< SOLVED
+    // >>>>>>>>>3. executionMode is shown as being a String which is wrong <<<<<<<<<< SOLVED
+    // >>>>4. Templates within element of lists should be anonymous... See how to generate them anyway then <<<<< SOLVED
+    // 5. Tabulation format: Indentation is not correctly generated
+    // >>>>6. Missing intelligence between DataObjects and Actions <<< SOLVED
+    // 7. Redo Hovering
+    // >>>>>>>8. Items are not removed if already existing <<<<<<< SOLVED
+    // >>>>>>>9. If type is not provided it should be suggested. <<<<<< SOLVED
+    // 10. Values of type should be suggested.
+    // 11. Suggest 4 basic properties when in root level
+  }
+
+  it should "create a context correctly when in a list but not in an element directly" in {
+    val line23EdgeOutside = SDLBContext.fromText(withListText).withCaretPosition(23, 8)
+    line23EdgeOutside.parentPath shouldBe List("actions", "join-departures-airports", "transformers")
+    line23EdgeOutside.word shouldBe "}},"
+    val line24StillEdgeOutside = SDLBContext.fromText(withListText).withCaretPosition(24, 6)
+    line24StillEdgeOutside.parentPath shouldBe List("actions", "join-departures-airports", "transformers")
+    line24StillEdgeOutside.word shouldBe "{" //line23EdgeOutside.textContext.rootConfig.root().render(ConfigRenderOptions.concise())
   }
 
 }

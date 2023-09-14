@@ -9,6 +9,7 @@ import scala.concurrent.Future
 import scala.jdk.FutureConverters.*
 import scala.jdk.CollectionConverters.*
 import java.util.List as JList
+import java.util.Set as JSet
 
 trait ScalaJavaConverter {
 
@@ -17,6 +18,8 @@ trait ScalaJavaConverter {
   extension [T] (l: List[T]) def toJava: JList[T] = l.asJava
   
   extension [T] (l: JList[T]) def toScala: List[T] = l.asScala.toList
+  
+  extension [T] (s: JSet[T]) def toScala: Set[T] = s.asScala.toSet
   
   extension [L, R] (either: Either[L, R]) def toJava: messages.Either[L, R] = either match
     case Left(leftValue) => messages.Either.forLeft(leftValue)

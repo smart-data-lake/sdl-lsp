@@ -15,9 +15,10 @@ class SDLBCompletionEngineSpec extends UnitSpec {
     completionEngine.generateCompletionItems(context) should have size 12
   }
 
-  it should "generate templates for actions" in {
-    val deduplicateTemplate = completionEngine.generateTemplatesForAction().map(_.getInsertText).find(_.startsWith("deduplicate"))
-    deduplicateTemplate should contain ("deduplicateaction_PLACEHOLDER {\n\t\ttype = DeduplicateAction\n\t\tinputId = \"???\"\n\t\toutputId = \"???\"\n\t}\n")
+  it should "do something" in { //TODO either rename or change. Or remove it.
+    val context = SDLBContext.fromText(loadFile("fixture/hocon/with-lists-example.conf"))
+    completionEngine.generateCompletionItems(context.withCaretPosition(3, 0)) should have size 9
+    completionEngine.generateCompletionItems(context.withCaretPosition(7, 0)) should have size 4
   }
 
 

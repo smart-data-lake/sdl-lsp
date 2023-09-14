@@ -30,33 +30,38 @@ private[context] object HoconParser:
 
 
   /**
-   * Find the path corresponding to the line number
+   * Find the path corresponding to the line number.
+   * This version assumes last parent cannot be an index.
+   *
+   * Notice that this is a replacement from the old version "retrievePath" which provided a path like "a.b.c".
+   * Please see first commits to find back this version if necessary.
+   * Note for dev: Returning if last element of the path is a kind of list here is a bit hacky and ugly, but it avoids traversing the thing twice.
    * @param config a config representing the HOCON file
-   * @param line line number
-   * @return path in format "a.b.c"
+   * @param line   line number
+   * @return path in list format, and true if direct parent is of a list kind
    */
-  def retrievePath(config: Config, line: Int): String =
-    def matchTypeValueAndSearchRecursive(key: String, configValue: ConfigValue, currentPath: String): Option[String] = {
+  def retrievePathList(config: Config, line: Int): (List[String], Boolean) =
+    def matchTypeValueAndSearchRecursive(key: String, configValue: ConfigValue, currentPath: List[String]): Option[(List[String], Boolean)] = {
       configValue match
-        case configList: ConfigList => configList.toScala.zipWithIndex.flatMap{ (config, index) => matchTypeValueAndSearchRecursive(index.toString, config, currentPath + "." + key)}.headOption
-        case configObject: ConfigObject => searchPath(configObject, currentPath + "." + key)
+        case configList: ConfigList => configList.toScala.zipWithIndex.flatMap { (config, index) => matchTypeValueAndSearchRecursive(index.toString, config, key::currentPath) }.headOption
+        case configObject: ConfigObject => searchPath(configObject, key::currentPath)
         case _ => None
     }
 
-    def searchPath(currentConfig: ConfigObject, currentPath: String): Option[String] =
+    def searchPath(currentConfig: ConfigObject, currentPath: List[String]): Option[(List[String], Boolean)] =
       import scala.jdk.CollectionConverters._
 
       val entrySet = currentConfig.entrySet().asScala
 
       entrySet.find(_.getValue.origin().lineNumber() == line) match
         case Some(entry) =>
-          Some(currentPath + "." + entry.getKey)
+          Some((entry.getKey::currentPath, entry.getValue.isInstanceOf[ConfigList]))
         case None =>
           entrySet.flatMap { entry => matchTypeValueAndSearchRecursive(entry.getKey, entry.getValue, currentPath)
           }.headOption
 
-    searchPath(config.root(), "").getOrElse("").stripPrefix(".")
-
+    val (l, b) = searchPath(config.root(), List.empty[String]).getOrElse((List.empty[String], false))
+    (l.reverse, b)
 
   /**
    * Retrieve the direct parent of the current caret position.
@@ -69,31 +74,51 @@ private[context] object HoconParser:
    */
   def retrieveDirectParent(text: String, line: Int, column: Int): (Int, String) =
 
-    @tailrec
     /*
     Note that retrieveHelper has not the exact same logic than retrieveDirectParent.
     */
+    @tailrec
     def retrieveHelper(line: Int, depth: Int): (Int, String) = {
       if line <= 0 then
         (0, "")
       else
-        val textLine = text.split(Token.NEW_LINE)(line-1).filterNot(c => c.isWhitespace || c == Token.START_LIST || c == Token.END_LIST).takeWhile(_ != Token.COMMENT).mkString
-        val newDepth = depth - textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.END_OBJECT) - textLine.count(_ == Token.END_LIST) + textLine.count(_ == Token.START_LIST)
-        if textLine.contains(Token.END_OBJECT) then retrieveHelper(line-1, newDepth) else
+        val textLine = text.split(Token.NEW_LINE)(line-1).filterNot(c => c.isWhitespace).takeWhile(_ != Token.COMMENT).mkString
+        val newDepth = depth - textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.END_OBJECT) + textLine.count(_ == Token.END_LIST) - textLine.count(_ == Token.START_LIST)
+        if textLine.contains(Token.END_OBJECT) || textLine.contains(Token.END_LIST) then retrieveHelper(line-1, newDepth) else
           textLine.split(Token.KEY_VAL_SPLIT_REGEX) match
-            case Array(singleBlock) => if singleBlock.isBlank then retrieveHelper(line-1, newDepth) else if depth == 0 then (line, singleBlock) else retrieveHelper(line-1, newDepth)
+            case Array(singleBlock) => if singleBlock.isBlank then retrieveHelper(line-1, newDepth) else if newDepth < 0 then (line, singleBlock) else retrieveHelper(line-1, newDepth)
             case _ => retrieveHelper(line-1, newDepth)
     }
 
     val textLine = text.split(Token.NEW_LINE)(line-1).takeWhile(_ != Token.COMMENT).mkString
     val col = math.min(textLine.length, column)
-    if textLine.count(_ == Token.END_OBJECT) > textLine.count(_ == Token.START_OBJECT) then retrieveHelper(line-1, if col > textLine.indexOf(Token.END_OBJECT) then 1 else 0) else
+    if textLine.count(_ == Token.END_OBJECT) + textLine.count(_ == Token.END_LIST) > textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.START_LIST) then
+      val depthForObject = if textLine.indexOf(Token.END_OBJECT) != -1 && col > textLine.indexOf(Token.END_OBJECT) then 1 else 0
+      val depthForList   = if textLine.indexOf(Token.END_LIST) != -1 && col > textLine.indexOf(Token.END_LIST) then 1 else 0
+      retrieveHelper(line-1, depthForObject + depthForList)
+    else
       val keyValSplit = textLine.split(Token.KEY_VAL_SPLIT_REGEX)
       if col > keyValSplit(0).length then
         val keyName = keyValSplit(0).trim
-        (if keyName.isBlank then 0 else line, keyName)
+        @tailrec
+        def findValidDirectParentName(line: Int): Option[(Int, String)] = if line <= 0 then None else //TODO test
+          val textLine = text.split(Token.NEW_LINE)(line-1).takeWhile(_ != Token.COMMENT).mkString
+          if textLine.isBlank then findValidDirectParentName(line-1) else
+            val words = textLine.filterNot(c => c == Token.START_LIST || c == Token.END_LIST || c == Token.START_OBJECT || c == Token.END_OBJECT || c == '=' || c == '"').split(" ")
+            words match
+              case Array(singleBlock) => Some(line, singleBlock)
+              case _ => None
+        end findValidDirectParentName
+
+        if keyName.isBlank then
+          val oParentName = findValidDirectParentName(line-1)
+          oParentName.getOrElse(retrieveHelper(line-1, 0))
+        else
+        (line, keyName)
       else
         retrieveHelper(line-1, 0)
+  end retrieveDirectParent
+
 
 
   def retrieveWordAtPosition(text: String, line: Int, col: Int): String =
@@ -148,6 +173,10 @@ private[context] object HoconParser:
 
   private[hocon] def findObjectAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_OBJECT, Token.END_OBJECT)
   private[hocon] def findListAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_LIST, Token.END_LIST)
+  
+  def isInList(text: String, line: Int, column: Int): Boolean =
+    val absolutePosition = lineColToAbsolutePosition(text, line, column)
+    findListAreaFrom(text, absolutePosition).isDefined
 
   private def findAreaFrom(text: String, position: Int, startToken: Char, endToken: Char): Option[(Int, Int)] =
     @tailrec

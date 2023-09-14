@@ -1,8 +1,7 @@
 package io.smartdatalake.schema
 
+import io.smartdatalake.context.SDLBContext
+import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
+
 trait SchemaReader:
-  def retrieveActionProperties(typeName: String): Iterable[SchemaItem]
-  
-  def retrieveActionPropertyDescription(typeName: String, propertyName: String): String
-  
-  def retrieveActionTypesWithRequiredAttributes(): Iterable[(String, Iterable[SchemaItem])]
+  def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection

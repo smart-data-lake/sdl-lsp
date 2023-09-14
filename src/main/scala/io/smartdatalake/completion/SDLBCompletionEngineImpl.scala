@@ -1,29 +1,51 @@
 package io.smartdatalake.completion
 
+import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.completion.SDLBCompletionEngine
-import io.smartdatalake.context.SDLBContext
+import io.smartdatalake.context.{SDLBContext, TextContext}
+import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl}
+import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 
 import scala.util.{Failure, Success, Try}
 
 class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends SDLBCompletionEngine {
   
-  override def generateCompletionItems(context: SDLBContext): List[CompletionItem] = context.parentPath match //TODO split path by '.' and handle logic if element list or not like that? Carry over the new config like that too?
-    case path if path.startsWith("actions") && path.count(_ == '.') == 1 => generatePropertiesOfAction(context)
-    case "actions"  => generateTemplatesForAction()
-    case path if path.startsWith("actions") => List.empty[CompletionItem] //TODO when going deeper find a good recursive approach and mb merge it with first case
-    case _ => List.empty[CompletionItem]
+  override def generateCompletionItems(context: SDLBContext): List[CompletionItem] =
+    val itemSuggestionsFromSchema = schemaReader.retrieveAttributeOrTemplateCollection(context) match
+      case AttributeCollection(attributes) => generateAttributeSuggestions(attributes, context.getParentContext)
+      case TemplateCollection(templates) => generateTemplateSuggestions(templates, context.isInList)
 
+    val itemSuggestionsFromConfig = generateItemSuggestionsFromConfig(context)
+    val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema
+    if allItems.isEmpty then typeList else allItems
 
-  private[completion] def generateTemplatesForAction(): List[CompletionItem] =
-    val actionsWithRequiredAttr = schemaReader.retrieveActionTypesWithRequiredAttributes()
-    actionsWithRequiredAttr.map { case (actionType, attributes) =>
+  private def generateItemSuggestionsFromConfig(context: SDLBContext): List[CompletionItem] = context.parentPath.lastOption match
+    case Some(value) => value match
+      case "inputId" | "outputId" => retrieveDataObjectIds(context)
+      case _ => List.empty[CompletionItem]
+    case None => List.empty[CompletionItem]
+
+  private def retrieveDataObjectIds(context: SDLBContext): List[CompletionItem] = //TODO test
+    context.textContext.rootConfig.getValue("dataObjects") match
+      case asConfigObject: ConfigObject => asConfigObject.unwrapped().keySet().toScala.toList.map(createCompletionItem)
+
+      case _ => List.empty[CompletionItem]
+  private def generateAttributeSuggestions(attributes: Iterable[SchemaItem], parentContext: Option[ConfigValue]): List[CompletionItem] =
+    val items = parentContext match
+      case Some(config: ConfigObject) => attributes.filter(item => Option(config.get(item.name)).isEmpty)
+      case _ => attributes
+    items.map(createCompletionItem).toList
+
+  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], isInList: Boolean): List[CompletionItem] =
+    templates.map { case (actionType, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)
       completionItem.setDetail("  template")
+      val keyName = if isInList then "" else s"${actionType.toLowerCase}_PLACEHOLDER"
       completionItem.setInsertText(
-        s"""${actionType.toLowerCase}_PLACEHOLDER {
+        s"""$keyName {
           |${
           def generatePlaceHolderValue(att: SchemaItem) = {
             if att.name == "type" then actionType else att.itemType.defaultValue
@@ -34,19 +56,19 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
       completionItem
     }.toList
 
-
-  private def generatePropertiesOfAction(context: SDLBContext): List[CompletionItem] =
-    def isMissingInConfig(item: SchemaItem): Boolean = Try(context.textContext.config.getAnyRef(context.parentPath + "." + item.name)).isFailure
-    val tActionType: Try[String] = Try(context.textContext.config.getString(context.parentPath + ".type")) // In list, it looks like fixture.config.getList("actions.select-airport-cols.transformers").get(0).asInstanceOf[ConfigObject].get("type").unwrapped()
-    tActionType match
-      case Success(actionType) => schemaReader.retrieveActionProperties(actionType).filter(isMissingInConfig).map(createCompletionItem).toList
-      case Failure(_) => typeList
-
   private def createCompletionItem(item: SchemaItem): CompletionItem =
     val completionItem = new CompletionItem()
     completionItem.setLabel(item.name)
     completionItem.setDetail(f"  ${if item.required then "required" else ""}%s ${item.itemType.name}%-10s") //TODO check how to justify properly
-    completionItem.setInsertText(item.name + (if item.itemType.isComplexValue then " " else " = "))
+    completionItem.setInsertText(item.name + (if item.itemType == ItemType.OBJECT then " " else " = ") + item.itemType.defaultValue)
+    completionItem.setKind(CompletionItemKind.Snippet)
+    completionItem
+
+  private def createCompletionItem(item: String): CompletionItem =
+    val completionItem = new CompletionItem()
+    completionItem.setLabel(item)
+    completionItem.setDetail(s"   dataObject $item")
+    completionItem.setInsertText(item)
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem
 
