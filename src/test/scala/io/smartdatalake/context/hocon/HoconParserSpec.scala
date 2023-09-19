@@ -117,7 +117,7 @@ class HoconParserSpec extends UnitSpec {
       CaretData(positionMap( 3)(0), positionMap( 3)(1) + rightCol, 4, "type", List("actions", "join-departures-airports", "type")),
       CaretData(positionMap( 4)(0), positionMap( 4)(1) + rightCol, 5, "inputIds", List("actions", "join-departures-airports", "inputIds")),
       CaretData(positionMap( 5)(0), positionMap( 5)(1) + rightCol, 6, "transformer", List("actions", "join-departures-airports", "transformer")),
-      CaretData(positionMap( 6)(0), positionMap( 6)(1) + rightCol, 7, "type", List("actions", "join-departures-airports", "transformer", "type")),
+      CaretData(positionMap( 6)(0), positionMap( 6)(1) + rightCol, 7, "className", List("actions", "join-departures-airports", "transformer", "className")),
       CaretData(positionMap( 7)(0), positionMap( 7)(1) + rightCol, 8, "code", List("actions", "join-departures-airports", "transformer", "code")),
       CaretData(positionMap( 8)(0), positionMap( 8)(1) + rightCol, 9, "btl-connected-airports", List("actions", "join-departures-airports", "transformer", "code", "btl-connected-airports")),
       CaretData(positionMap( 9)(0), positionMap( 9)(1) + rightCol, 9, "btl-connected-airports", List("actions", "join-departures-airports", "transformer", "code", "btl-connected-airports")),

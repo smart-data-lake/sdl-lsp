@@ -5,3 +5,5 @@ import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateC
 
 trait SchemaReader:
   def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection
+  
+  def retrieveDescription(context: SDLBContext): String

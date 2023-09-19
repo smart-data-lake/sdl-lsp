@@ -6,7 +6,7 @@ object HoconTokens {
   val END_OBJECT = '}'
   val START_LIST = '['
   val END_LIST = ']'
-  val NEW_LINE = "\n"
+  val NEW_LINE_PATTERN = "\\R"
   val COMMENT = '#'
 
 }

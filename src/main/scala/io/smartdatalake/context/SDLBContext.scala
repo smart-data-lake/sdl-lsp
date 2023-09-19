@@ -36,7 +36,7 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
         case asConfigList: ConfigList => findParentContext(asConfigList.get(path.toInt), newRemainingPath)
         case _ => None
 
-    parentPath.headOption.flatMap(head => findParentContext(textContext.rootConfig.getValue(head), parentPath.tail))
+    findParentContext(textContext.rootConfig.root(), parentPath)
 
 }
 

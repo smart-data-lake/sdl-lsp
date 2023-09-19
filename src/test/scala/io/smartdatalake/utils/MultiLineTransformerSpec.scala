@@ -46,6 +46,6 @@ class MultiLineTransformerSpec extends UnitSpec {
 
 
   def trimLines(s: String): String =
-    s.split("\n").map(_.trim).mkString
+    s.split("\\R", -1).map(_.trim).mkString
 
 }

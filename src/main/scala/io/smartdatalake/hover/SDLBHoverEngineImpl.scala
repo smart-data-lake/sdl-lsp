@@ -13,13 +13,4 @@ class SDLBHoverEngineImpl(private val schemaReader: SchemaReader) extends SDLBHo
     markupContent.setValue(retrieveSchemaDescription(context))
     new Hover(markupContent)
 
-  private def retrieveSchemaDescription(context: SDLBContext): String = context.parentPath.mkString(".")
-//    context.parentPath match
-//      case path if path.startsWith("actions") && path.count(_ == '.') == 1 =>
-//        val tActionType: Try[String] = Failure(new IllegalStateException()) // Try(context.textContext.rootConfig.getString(context.parentPath + ".type"))
-//        tActionType match
-//          case Success(actionType) => schemaReader.retrieveActionPropertyDescription(actionType, context.word)
-//          case Failure(_) => ""
-//
-//      case _ => ""
-
+  private def retrieveSchemaDescription(context: SDLBContext): String = schemaReader.retrieveDescription(context)

@@ -21,14 +21,27 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
 
   private[schema] def createGlobalSchemaContext: SchemaContext = SchemaContext(schema, schema)
 
-  override def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection = retrieveSchemaContext(context) match
+  override def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection = retrieveSchemaContext(context, withWordInPath = false) match
     case None => AttributeCollection(Iterable.empty)
     case Some(schemaContext) => schemaContext.generateSchemaSuggestions
-  private[schema] def retrieveSchemaContext(context: SDLBContext): Option[SchemaContext] =
+  override def retrieveDescription(context: SDLBContext): String = if isWordMeaningless(context.word) then "" else
+    retrieveSchemaContext(context, withWordInPath = true) match
+      case None => ""
+      case Some(schemaContext) => schemaContext.getDescription
+
+  /**
+   * Not a crucial method but useful to speedup query process and might avoid some unwanted crash
+   * @param word word to check
+   * @return true if word has no chance to appear in the schema file
+   */
+  private def isWordMeaningless(word: String): Boolean =
+    word.filterNot(Set('{', '}', '[', ']', '"', '(', ')', '#', '/', '\\', '.').contains(_)).isBlank
+
+  private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] =
     val rootConfig = context.textContext.rootConfig
-    val parentPath = context.parentPath
-    parentPath match
-      case Nil => None
+    val path = if withWordInPath then context.parentPath.appended(context.word) else context.parentPath
+    path match
+      case Nil => Some(createGlobalSchemaContext)
       case globalObject::remainingPath =>
         val schemaContext = createGlobalSchemaContext.updateByName(globalObject)
         val rootConfigValue = rootConfig.getValue(globalObject)
@@ -41,18 +54,18 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
             case None => scCv._1.flatMap(_.updateByName(elementPath))
           (newSchemaContext, newConfigValue)
         }._1
-
-
+  end retrieveSchemaContext
 
   private[schema] def moveInConfigAndRetrieveType(config: ConfigValue, path: String): (ConfigValue, Option[String]) = //TODO what about a path finishing with "type"
     val newConfig = config match
       case asConfigObject: ConfigObject => asConfigObject.get(path)
-      case asConfigList: ConfigList => asConfigList.get(path.toInt)
+      case asConfigList: ConfigList => path.toIntOption.map(asConfigList.get).getOrElse(config) // keep config idle if path doesn't work  TODO log?
       case _ =>
         logger.debug("trying to move with config {} while receiving path element {}", config, path)
         config //TODO return config itself?
 
     val objectType = retrieveType(newConfig)
+    if (newConfig == null) {logger.error("Error, newConfig is null with path={}, config={}", path, config)}
     (newConfig, objectType)
 
   private def retrieveType(config: ConfigValue): Option[String] = config match

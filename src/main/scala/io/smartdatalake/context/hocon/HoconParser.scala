@@ -82,7 +82,7 @@ private[context] object HoconParser:
       if line <= 0 then
         (0, "")
       else
-        val textLine = text.split(Token.NEW_LINE)(line-1).filterNot(c => c.isWhitespace).takeWhile(_ != Token.COMMENT).mkString
+        val textLine = text.split(Token.NEW_LINE_PATTERN, -1)(line-1).filterNot(c => c.isWhitespace).takeWhile(_ != Token.COMMENT).mkString
         val newDepth = depth - textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.END_OBJECT) + textLine.count(_ == Token.END_LIST) - textLine.count(_ == Token.START_LIST)
         if textLine.contains(Token.END_OBJECT) || textLine.contains(Token.END_LIST) then retrieveHelper(line-1, newDepth) else
           textLine.split(Token.KEY_VAL_SPLIT_REGEX) match
@@ -90,7 +90,7 @@ private[context] object HoconParser:
             case _ => retrieveHelper(line-1, newDepth)
     }
 
-    val textLine = text.split(Token.NEW_LINE)(line-1).takeWhile(_ != Token.COMMENT).mkString
+    val textLine = text.split(Token.NEW_LINE_PATTERN, -1)(line-1).takeWhile(_ != Token.COMMENT).mkString
     val col = math.min(textLine.length, column)
     if textLine.count(_ == Token.END_OBJECT) + textLine.count(_ == Token.END_LIST) > textLine.count(_ == Token.START_OBJECT) + textLine.count(_ == Token.START_LIST) then
       val depthForObject = if textLine.indexOf(Token.END_OBJECT) != -1 && col > textLine.indexOf(Token.END_OBJECT) then 1 else 0
@@ -102,7 +102,7 @@ private[context] object HoconParser:
         val keyName = keyValSplit(0).trim
         @tailrec
         def findValidDirectParentName(line: Int): Option[(Int, String)] = if line <= 0 then None else //TODO test
-          val textLine = text.split(Token.NEW_LINE)(line-1).takeWhile(_ != Token.COMMENT).mkString
+          val textLine = text.split(Token.NEW_LINE_PATTERN, -1)(line-1).takeWhile(_ != Token.COMMENT).mkString
           if textLine.isBlank then findValidDirectParentName(line-1) else
             val words = textLine.filterNot(c => c == Token.START_LIST || c == Token.END_LIST || c == Token.START_OBJECT || c == Token.END_OBJECT || c == '=' || c == '"').split(" ")
             words match
@@ -130,7 +130,7 @@ private[context] object HoconParser:
       val rightIndex = if rightPossibleIndex == -1 then textLine.length - 2 else index + rightPossibleIndex
       textLine.substring(leftIndex, rightIndex).trim
 
-    val textLine = text.split(Token.NEW_LINE)(line-1) + " "
+    val textLine = text.split(Token.NEW_LINE_PATTERN, -1)(line-1) + " "
     val column = math.min(textLine.length-1, col)
     val leadingCharacter = textLine.charAt(column)
     column match
@@ -193,7 +193,7 @@ private[context] object HoconParser:
     if startPosition != -1 && endPosition != -1 then Some((startPosition+1, endPosition)) else None // (...+1, ...-1) to exclude list characters themselves
 
   private[hocon] def lineColToAbsolutePosition(text: String, line: Int, column: Int): Int =
-    val textLine = text.split(Token.NEW_LINE)
+    val textLine = text.split(Token.NEW_LINE_PATTERN, -1)
     val nCharactersBeforeCurrentLine = textLine.take(line-1).map(line => line.length + 1).sum // +1 for \n character
     val nCharactersCurrentLine = math.min(textLine(line-1).length, column)
     nCharactersCurrentLine + nCharactersBeforeCurrentLine

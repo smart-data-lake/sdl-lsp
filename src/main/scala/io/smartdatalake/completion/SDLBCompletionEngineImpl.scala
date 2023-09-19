@@ -4,7 +4,7 @@ import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.completion.SDLBCompletionEngine
 import io.smartdatalake.context.{SDLBContext, TextContext}
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
-import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl}
+import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl, TemplateType}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 
@@ -15,7 +15,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
   override def generateCompletionItems(context: SDLBContext): List[CompletionItem] =
     val itemSuggestionsFromSchema = schemaReader.retrieveAttributeOrTemplateCollection(context) match
       case AttributeCollection(attributes) => generateAttributeSuggestions(attributes, context.getParentContext)
-      case TemplateCollection(templates) => generateTemplateSuggestions(templates, context.isInList)
+      case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType, context.isInList)
 
     val itemSuggestionsFromConfig = generateItemSuggestionsFromConfig(context)
     val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema
@@ -23,11 +23,11 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
 
   private def generateItemSuggestionsFromConfig(context: SDLBContext): List[CompletionItem] = context.parentPath.lastOption match
     case Some(value) => value match
-      case "inputId" | "outputId" => retrieveDataObjectIds(context)
+      case "inputId" | "outputId" | "inputIds" | "outputIds" => retrieveDataObjectIds(context) //TODO regex?
       case _ => List.empty[CompletionItem]
     case None => List.empty[CompletionItem]
 
-  private def retrieveDataObjectIds(context: SDLBContext): List[CompletionItem] = //TODO test
+  private def retrieveDataObjectIds(context: SDLBContext): List[CompletionItem] = //TODO test. TODO return List[String] instead?
     context.textContext.rootConfig.getValue("dataObjects") match
       case asConfigObject: ConfigObject => asConfigObject.unwrapped().keySet().toScala.toList.map(createCompletionItem)
 
@@ -38,20 +38,22 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
       case _ => attributes
     items.map(createCompletionItem).toList
 
-  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], isInList: Boolean): List[CompletionItem] =
+  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, isInList: Boolean): List[CompletionItem] =
     templates.map { case (actionType, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)
       completionItem.setDetail("  template")
-      val keyName = if isInList then "" else s"${actionType.toLowerCase}_PLACEHOLDER"
-      completionItem.setInsertText(
-        s"""$keyName {
+      val keyName = if templateType == TemplateType.OBJECT then s"${actionType.toLowerCase}_PLACEHOLDER" else ""
+      val startObject = if templateType != TemplateType.ATTRIBUTES then "{" else ""
+      val endObject = if templateType != TemplateType.ATTRIBUTES then "}" else ""
+      completionItem.setInsertText( //TODO handle indentation
+        s"""$keyName $startObject
           |${
           def generatePlaceHolderValue(att: SchemaItem) = {
             if att.name == "type" then actionType else att.itemType.defaultValue
           }
-          attributes.map(att => "\t\t" + att.name + " = " + generatePlaceHolderValue(att)).mkString("\n")}\n\t}
-          |""".stripMargin)
+          attributes.map(att => "\t\t" + att.name + " = " + generatePlaceHolderValue(att)).mkString("\n")}\n\t$endObject
+          |""".stripMargin) //TODO remove blank lines?
       completionItem.setKind(CompletionItemKind.Snippet)
       completionItem
     }.toList

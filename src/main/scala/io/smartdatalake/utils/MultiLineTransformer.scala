@@ -20,7 +20,7 @@ object MultiLineTransformer {
       // handle specific case where the starting """ and ending """ are in the same line or not.
       line.count(_ == '"') % 2 == 1
     case class State(isInMultiLine: Boolean, lineNumber: Int, columnShift: Int)
-    text.split("\n")
+    text.split("\\R", -1)
       .foldLeft(List(State(false, 1, 0))) {(states, line) =>
         val lastState = states.head
         val isInTripleQuotes = lastState.isInMultiLine ^ isMultilineModeStartingOrEnding(line)

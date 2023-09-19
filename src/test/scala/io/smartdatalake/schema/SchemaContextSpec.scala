@@ -151,60 +151,116 @@ class SchemaContextSpec extends UnitSpec {
 
   it should "generate template suggestions at actions level" in {
     val actionContext = actionSchemaContext
-    actionContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    actionContext shouldBe defined
+    val suggestions = actionContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [TemplateCollection]
+    val templates = suggestions.asInstanceOf[TemplateCollection]
+    templates.templateType shouldBe TemplateType.OBJECT
+    templates.templates should have size 8
   }
 
   it should "generate properties suggestion in specific action level" in {
     val specificActionContext = specificActionSchemaContext
-    specificActionContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    specificActionContext shouldBe defined
+    val suggestions = specificActionContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    val attributes = suggestions.asInstanceOf[AttributeCollection].attributes
+    attributes should have size 14
   }
 
   it should "generate suggestions within metaData in CopyAction level" in {
     val copyActionMetaDataContext = copyActionMetaDataSchemaContext
-    copyActionMetaDataContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionMetaDataContext shouldBe defined
+    val suggestions = copyActionMetaDataContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    val attributes = suggestions.asInstanceOf[AttributeCollection].attributes
+    attributes should have size 4
   }
 
   it should "generate nothing by itself for inputId as it is not schema-related suggestions" in {
     val copyActionInputIdContext = copyActionInputIdSchemaContext
-    copyActionInputIdContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionInputIdContext shouldBe defined
+    val suggestions = copyActionInputIdContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    suggestions.asInstanceOf[AttributeCollection].attributes shouldBe empty
   }
 
   it should "generate nothing by itself for array inputIds as it is not schema-related suggestions" in {
     val copyActionInputIdsContext = actionSchemaContext
       .flatMap(_.updateByType("CustomDataFrameAction"))
       .flatMap(_.updateByName("inputIds"))
-    copyActionInputIdsContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+
+    copyActionInputIdsContext shouldBe defined
+    val suggestions = copyActionInputIdsContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [TemplateCollection]
+    val templates = suggestions.asInstanceOf[TemplateCollection]
+    templates.templateType shouldBe TemplateType.ARRAY_ELEMENT
+    templates.templates shouldBe empty
   }
 
-  it should "generate template suggestions for executionMode" in { //TODO not ready yet
+  it should "generate template suggestions for executionMode" in {
     val copyActionExecutionModeWithoutTypeContext = copyActionExecutionModeWithoutTypeSchemaContext
-    copyActionExecutionModeWithoutTypeContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionExecutionModeWithoutTypeContext shouldBe defined
+    val suggestions = copyActionExecutionModeWithoutTypeContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [TemplateCollection]
+    val templates = suggestions.asInstanceOf[TemplateCollection]
+    templates.templateType shouldBe TemplateType.ATTRIBUTES
+    templates.templates should have size 10
   }
 
   it should "generate suggestions within executionMode with provided type=DataFrameIncrementalMode in CopyAction" in {
     val copyActionExecutionModeWithTypeContext = copyActionExecutionModeWithTypeSchemaContext
-    copyActionExecutionModeWithTypeContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionExecutionModeWithTypeContext shouldBe defined
+    val suggestions = copyActionExecutionModeWithTypeContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    suggestions.asInstanceOf[AttributeCollection].attributes should have size 4
   }
 
   it should "generate suggestions within transformer in CopyAction" in {
     val copyActionTransformerContext = copyActionTransformerSchemaContext
-    copyActionTransformerContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionTransformerContext shouldBe defined
+    val suggestions = copyActionTransformerContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    suggestions.asInstanceOf[AttributeCollection].attributes should have size 8
   }
 
   it should "generate template suggestions within transformers in CopyAction" in {
     val copyActionTransformersContext = copyActionTransformersSchemaContext
-    copyActionTransformersContext.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionTransformersContext shouldBe defined
+    val suggestions = copyActionTransformersContext.get.generateSchemaSuggestions
+    suggestions shouldBe a [TemplateCollection]
+    val templates = suggestions.asInstanceOf[TemplateCollection]
+    templates.templateType shouldBe TemplateType.ARRAY_ELEMENT
+    templates.templates should have size 18
   }
-
-  //TODO do "remain calm" tests for generations
-
+  
   it should "generate suggestions within second element of transformers list in CopyAction" in {
     val copyActionTransformersAt1Context = copyActionTransformersAt1SchemaContext
-    copyActionTransformersAt1Context.map(_.generateSchemaSuggestions).foreach(printSuggestions)
+    copyActionTransformersAt1Context shouldBe defined
+    val suggestions = copyActionTransformersAt1Context.get.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    suggestions.asInstanceOf[AttributeCollection].attributes should have size 6
   }
 
-  def printSuggestions(suggestions: AttributeCollection | TemplateCollection): Unit = suggestions match
-    case AttributeCollection(attributes) => println(attributes.mkString("\n"))
-    case TemplateCollection(templates) => println(templates.mkString("\n"))
+  it should "generate suggestions when path is empty" in {
+    val globalContext = initialSchemaContext
+    val suggestions = globalContext.generateSchemaSuggestions
+    suggestions shouldBe a [AttributeCollection]
+    val attributes = suggestions.asInstanceOf[AttributeCollection].attributes.toList
+
+    attributes.head.name shouldBe "global"
+    attributes.head.required shouldBe false
+
+    attributes(1).name shouldBe "connections"
+    attributes(1).required shouldBe false
+
+    attributes(2).name shouldBe "dataObjects"
+    attributes(2).required shouldBe true
+
+    attributes(3).name shouldBe "actions"
+    attributes(3).required shouldBe true
+  }
+
+  //TODO add test for descriptions
 
 }
