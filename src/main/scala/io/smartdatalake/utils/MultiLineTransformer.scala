@@ -6,7 +6,7 @@ object MultiLineTransformer {
 
   def flattenMultiLines(text: String): String =
     val pattern = raw"""(?s)\"\"\".*?\"\"\"""".r
-    pattern.replaceAllIn(text, m => m.matched.replace(sys.props("line.separator"), ""))
+    pattern.replaceAllIn(text, m => m.matched.replace("\n", ""))
 
 
   def computeCorrectedPosition(text: String, lineNumber: Int, columnNumber: Int): (Int, Int) =

@@ -15,7 +15,7 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
-    Source.fromInputStream(inputStream).getLines().mkString(sys.props("line.separator")).trim
+    Source.fromInputStream(inputStream).getLines().mkString("\n").trim
   })
 
 
