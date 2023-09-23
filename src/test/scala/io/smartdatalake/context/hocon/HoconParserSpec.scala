@@ -145,7 +145,7 @@ class HoconParserSpec extends UnitSpec {
   }
 
 
-  it should "find path in file with lists" in { //TODO test nested lists
+  it should "find path in file with lists" in {
     val fixture = loadFixture("fixture/hocon/with-lists-example.conf")
     
     val leftCaretData = List(
@@ -265,9 +265,8 @@ class HoconParserSpec extends UnitSpec {
     HoconParser.retrieveWordAtPosition(text, 4, 0) shouldBe "global"
     HoconParser.retrieveWordAtPosition(text, 4, 6) shouldBe "global"
     HoconParser.retrieveWordAtPosition(text, 4, 7) shouldBe "{"
-    HoconParser.retrieveWordAtPosition(text, 6, 7) shouldBe "#\"spark.sql.shuffle.partitions\"" //TODO its a comment line, disable?
-    HoconParser.retrieveWordAtPosition(text, 7, 7) shouldBe "\"spark.sql.shuffle.partitions\"" //TODO its a string value, disable?
-
+    HoconParser.retrieveWordAtPosition(text, 6, 7) shouldBe "#\"spark.sql.shuffle.partitions\"" // Which means hovering works with commented code
+    HoconParser.retrieveWordAtPosition(text, 7, 7) shouldBe "\"spark.sql.shuffle.partitions\""
   }
 
   it should "transform line column position to absolute position" in {

@@ -9,7 +9,7 @@ import scala.util.Using
 
 class MultiLineTransformerSpec extends UnitSpec {
 
-  private val text: String = loadFile("fixture/hocon/with-multi-lines-example.conf") //TODO add a fixture with mix-in flattened triple quotes and not
+  private val text: String = loadFile("fixture/hocon/with-multi-lines-example.conf")
 
 
   "Multi line transformer" should "correctly flatten multi lines" in {

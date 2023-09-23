@@ -11,5 +11,5 @@ import scala.util.Using
 abstract class UnitSpec extends AnyFlatSpec with should.Matchers with OptionValues with Inside with Inspectors with TestModule:
   def loadFile(filePath: String): String =
     Using.resource(getClass.getClassLoader.getResourceAsStream(filePath)) { inputStream =>
-      Source.fromInputStream(inputStream).getLines().mkString("\n").trim
+      Source.fromInputStream(inputStream).getLines().mkString(sys.props("line.separator")).trim
     }

@@ -81,13 +81,6 @@ class SchemaReaderSpec extends UnitSpec {
     println(context.parentPath.appended(context.word))
     println(schemaReader.retrieveDescription(context))
   }
-
-  it should "debug" in {
-    val contextText =
-      "\nactions {\n\n  join-departures-airports {\n    type \u003d CustomDataFrameAction\n    \n    inputIds \u003d [stg-departures, int-airports, dataobjectsexporterdataobject_PLACEHOLDER]\n    transformer \u003d {\n\n      code \u003d {\n        btl-connected-airports \u003d \"select stg_departures.estdepartureairport, stg_departures.estarrivalairport,        airports.*         from stg_departures join int_airports airports on stg_departures.estArrivalAirport \u003d airports.ident\"\n      }\n    }\n  }\n\n  compute-distances {\n    type \u003d CopyAction\n    transformers \u003d [\n       {\n\t\ttype \u003d PythonCodeDfTransformer\n\t},\n       {\n\t\ttype \u003d BlacklistTransformer\n         description \u003d \"???\"\n\t\tcolumnBlacklist \u003d []\n\t}\n\n    ]\n    executionMode {\n        \n\t\ttype \u003d DataObjectStateIncrementalMode\n    \n    }\n    inputId \u003d \"???\"\n    code \u003d {\n      btl-departures-arrivals-airports \u003d \"select btl_connected_airports.estdepartureairport, btl_connected_airports.estarrivalairport,        btl_connected_airports.name as arr_name, btl_connected_airports.latitude_deg as arr_latitude_deg, btl_connected_airports.longitude_deg as arr_longitude_deg,        airports.name as dep_name, airports.latitude_deg as dep_latitude_deg, airports.longitude_deg as dep_longitude_deg           from btl_connected_airports join int_airports airports on btl_connected_airports.estdepartureairport \u003d airports.ident\"\n    }\n    metadata {\n      feed \u003d compute\n    }\n  }\n\n  historizeaction_PLACEHOLDER {\n\t\ttype \u003d HistorizeAction\n\t\tinputId \u003d \"???\"\n\t\toutputId \u003d \"???\"\n\t}\n\n  download-airports  {\n    \n    inputId \u003d ext-airports\n  }\n  \n}\n\ndataObjects {\n  dataobjectsexporterdataobject_PLACEHOLDER {\n    type \u003d DataObjectsExporterDataObject\n  }\n\n  csvfiledataobject_PLACEHOLDER {\n    type \u003d CsvFileDataObject\n    path \u003d \"???\"\n  }\n\n}\n\n\n"
-    val context = SDLBContext.fromText(contextText).withCaretPosition(7, 22) //or 52
-    println(context)
-  }
   
   //TODO add tests for description
 }

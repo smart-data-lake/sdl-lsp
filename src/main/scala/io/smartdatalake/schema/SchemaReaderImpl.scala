@@ -15,7 +15,7 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
-    Source.fromInputStream(inputStream).getLines().mkString("\n").trim
+    Source.fromInputStream(inputStream).getLines().mkString(sys.props("line.separator")).trim
   })
 
 
@@ -56,20 +56,23 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
         }._1
   end retrieveSchemaContext
 
-  private[schema] def moveInConfigAndRetrieveType(config: ConfigValue, path: String): (ConfigValue, Option[String]) = //TODO what about a path finishing with "type"
+  private[schema] def moveInConfigAndRetrieveType(config: ConfigValue, path: String): (ConfigValue, Option[String]) =
     val newConfig = config match
       case asConfigObject: ConfigObject => asConfigObject.get(path)
-      case asConfigList: ConfigList => path.toIntOption.map(asConfigList.get).getOrElse(config) // keep config idle if path doesn't work  TODO log?
+      case asConfigList: ConfigList => path.toIntOption.map(asConfigList.get).getOrElse {
+        logger.debug("Trying to access an index in config {} but given element path is not of type int: {}", config, path)
+        config
+      }
       case _ =>
-        logger.debug("trying to move with config {} while receiving path element {}", config, path)
-        config //TODO return config itself?
+        logger.debug("Trying to move with config {} while receiving path element {}", config, path)
+        config
 
     val objectType = retrieveType(newConfig)
     if (newConfig == null) {logger.error("Error, newConfig is null with path={}, config={}", path, config)}
     (newConfig, objectType)
 
   private def retrieveType(config: ConfigValue): Option[String] = config match
-    case asConfigObjectAgain: ConfigObject => Option(asConfigObjectAgain.get("type")).flatMap(_.unwrapped() match
+    case asConfigObject: ConfigObject => Option(asConfigObject.get("type")).flatMap(_.unwrapped() match
       case s: String => Some(s)
       case _ => None)
     case _ => None

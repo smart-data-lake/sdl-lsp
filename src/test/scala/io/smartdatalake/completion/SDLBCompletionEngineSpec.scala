@@ -9,16 +9,24 @@ import scala.util.Using
 
 class SDLBCompletionEngineSpec extends UnitSpec {
   
+  private val context = SDLBContext.fromText(loadFile("fixture/hocon/with-lists-example.conf"))
+  
   "SDLB Completion engine" should "retrieve all the properties of copyAction" in {
     val context = SDLBContext.fromText(loadFile("fixture/hocon/with-multi-lines-flattened-example.conf"))
       .withCaretPosition(16, 0)
     completionEngine.generateCompletionItems(context) should have size 12
   }
 
-  it should "do something" in { //TODO either rename or change. Or remove it.
-    val context = SDLBContext.fromText(loadFile("fixture/hocon/with-lists-example.conf"))
+  it should "generate completion items inside a specific action" in {
     completionEngine.generateCompletionItems(context.withCaretPosition(3, 0)) should have size 9
+  }
+
+  it should "generate completion items within a specific transformer" in {
     completionEngine.generateCompletionItems(context.withCaretPosition(7, 0)) should have size 4
+  }
+  
+  it should "generate completion items after a type" in {
+    //TODO implement feature first :)
   }
 
 

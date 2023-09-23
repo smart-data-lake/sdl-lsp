@@ -18,7 +18,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
       case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType, context.isInList)
 
     val itemSuggestionsFromConfig = generateItemSuggestionsFromConfig(context)
-    val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema
+    val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema //TODO better split schema and config suggestions
     if allItems.isEmpty then typeList else allItems
 
   private def generateItemSuggestionsFromConfig(context: SDLBContext): List[CompletionItem] = context.parentPath.lastOption match
@@ -46,13 +46,14 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
       val keyName = if templateType == TemplateType.OBJECT then s"${actionType.toLowerCase}_PLACEHOLDER" else ""
       val startObject = if templateType != TemplateType.ATTRIBUTES then "{" else ""
       val endObject = if templateType != TemplateType.ATTRIBUTES then "}" else ""
+      val newLine = sys.props("line.separator") // Useful to permit to package the LSP independently of the platform
       completionItem.setInsertText( //TODO handle indentation
         s"""$keyName $startObject
           |${
           def generatePlaceHolderValue(att: SchemaItem) = {
             if att.name == "type" then actionType else att.itemType.defaultValue
           }
-          attributes.map(att => "\t\t" + att.name + " = " + generatePlaceHolderValue(att)).mkString("\n")}\n\t$endObject
+          attributes.map(att => "\t\t" + att.name + " = " + generatePlaceHolderValue(att)).mkString(newLine)}$newLine\t$endObject
           |""".stripMargin) //TODO remove blank lines?
       completionItem.setKind(CompletionItemKind.Snippet)
       completionItem
