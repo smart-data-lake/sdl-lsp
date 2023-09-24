@@ -101,7 +101,7 @@ private[context] object HoconParser:
       if col > keyValSplit(0).length then
         val keyName = keyValSplit(0).trim
         @tailrec
-        def findValidDirectParentName(line: Int): Option[(Int, String)] = if line <= 0 then None else //TODO test
+        def findValidDirectParentName(line: Int): Option[(Int, String)] = if line <= 0 then None else
           val textLine = text.split(Token.NEW_LINE_PATTERN, -1)(line-1).takeWhile(_ != Token.COMMENT).mkString
           if textLine.isBlank then findValidDirectParentName(line-1) else
             val words = textLine.filterNot(c => c == Token.START_LIST || c == Token.END_LIST || c == Token.START_OBJECT || c == Token.END_OBJECT || c == '=' || c == '"').split(" ")
@@ -148,7 +148,7 @@ private[context] object HoconParser:
       case None => None
       case Some((startPosition, endPosition)) =>
         @tailrec
-        def buildObjectPositions(currentPosition: Int, currentList: List[(Int, Int)]): List[(Int, Int)] = //TODO unit test?
+        def buildObjectPositions(currentPosition: Int, currentList: List[(Int, Int)]): List[(Int, Int)] =
           val nextStartObjectTokenRelativePosition = text.substring(currentPosition).indexOf(Token.START_OBJECT)
           if nextStartObjectTokenRelativePosition == -1 then
             currentList
@@ -174,9 +174,6 @@ private[context] object HoconParser:
   private[hocon] def findObjectAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_OBJECT, Token.END_OBJECT)
   private[hocon] def findListAreaFrom(text: String, position: Int): Option[(Int, Int)] = findAreaFrom(text, position, Token.START_LIST, Token.END_LIST)
   
-  def isInList(text: String, line: Int, column: Int): Boolean =
-    val absolutePosition = lineColToAbsolutePosition(text, line, column)
-    findListAreaFrom(text, absolutePosition).isDefined
 
   private def findAreaFrom(text: String, position: Int, startToken: Char, endToken: Char): Option[(Int, Int)] =
     @tailrec

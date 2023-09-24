@@ -261,6 +261,32 @@ class SchemaContextSpec extends UnitSpec {
     attributes(3).required shouldBe true
   }
 
-  //TODO add test for descriptions
+  // ===================================================================================================================
+
+  it should "generate a description for action" in {
+    val actionContext = actionSchemaContext.get
+    actionContext.getDescription shouldBe "Map of Action name and definition"
+  }
+
+  it should "generate a description for CopyAction" in {
+    val copyActionContext = specificActionSchemaContext.get
+    copyActionContext.getDescription.take(20) shouldBe "This[[Action]] copie"
+  }
+
+  it should "generate a description for metaData attribute" in {
+    val metadataContext = copyActionMetaDataSchemaContext.get
+    metadataContext.getDescription shouldBe "Additional metadata for an Action"
+  }
+
+  it should "generate a general description for executionMode without any defined type" in {
+    val globalExecutionModeContext = copyActionExecutionModeWithoutTypeSchemaContext.get
+    globalExecutionModeContext.getDescription shouldBe "optional execution mode for this Action"
+  }
+
+  it should "generate a precise description for executionMode with a defined type" in {
+    val dataFrameIncrementalModeContext = copyActionExecutionModeWithTypeSchemaContext.get
+    dataFrameIncrementalModeContext.getDescription.take(21) shouldBe "Compares max entry in"
+  }
+
 
 }

@@ -78,9 +78,17 @@ class SchemaReaderSpec extends UnitSpec {
 
   it should "remain quiet when path is wrong" in {
     val context = initialContext.withCaretPosition(9, 4)
-    println(context.parentPath.appended(context.word))
-    println(schemaReader.retrieveDescription(context))
+    schemaReader.retrieveDescription(context) shouldBe empty
   }
-  
-  //TODO add tests for description
+
+  it should "find description of join-departures-airports as a CustomDataFrameAction object" in {
+    val context = initialContext.withCaretPosition(15, 5)
+    schemaReader.retrieveDescription(context).take(60) shouldBe "This[[Action]] transforms data between many input and output"
+  }
+
+  it should "find description of metadata" in {
+    val context = initialContext.withCaretPosition(31, 10)
+    schemaReader.retrieveDescription(context) shouldBe "Additional metadata for an Action"
+  }
+
 }

@@ -15,7 +15,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
   override def generateCompletionItems(context: SDLBContext): List[CompletionItem] =
     val itemSuggestionsFromSchema = schemaReader.retrieveAttributeOrTemplateCollection(context) match
       case AttributeCollection(attributes) => generateAttributeSuggestions(attributes, context.getParentContext)
-      case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType, context.isInList)
+      case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType)
 
     val itemSuggestionsFromConfig = generateItemSuggestionsFromConfig(context)
     val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema //TODO better split schema and config suggestions
@@ -38,7 +38,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
       case _ => attributes
     items.map(createCompletionItem).toList
 
-  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, isInList: Boolean): List[CompletionItem] =
+  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType): List[CompletionItem] =
     templates.map { case (actionType, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)

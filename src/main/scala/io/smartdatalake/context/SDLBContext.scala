@@ -8,7 +8,7 @@ import io.smartdatalake.utils.MultiLineTransformer
 
 import scala.annotation.tailrec
 
-case class SDLBContext private(textContext: TextContext, parentPath: List[String], word: String, isInList: Boolean) {
+case class SDLBContext private(textContext: TextContext, parentPath: List[String], word: String) {
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
 
@@ -23,8 +23,7 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
       val parentPath = oIndex match
         case Some(index) => if isParentListKind then parentPathInitialList :+ index.toString else parentPathInitialList
         case None => parentPathInitialList
-      val isInList = HoconParser.isInList(configText, newLine, newCol)
-      copy(parentPath = parentPath, word = word, isInList = isInList)
+      copy(parentPath = parentPath, word = word)
       
 
   def getParentContext: Option[ConfigValue] =
@@ -41,9 +40,9 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
 }
 
 object SDLBContext {
-  val EMPTY_CONTEXT: SDLBContext = SDLBContext(EMPTY_TEXT_CONTEXT, List(), "", false)
+  val EMPTY_CONTEXT: SDLBContext = SDLBContext(EMPTY_TEXT_CONTEXT, List(), "")
 
-  def fromText(originalText: String): SDLBContext = SDLBContext(TextContext.create(originalText), List(), "", false)
+  def fromText(originalText: String): SDLBContext = SDLBContext(TextContext.create(originalText), List(), "")
 
 }
 
