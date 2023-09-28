@@ -19,7 +19,7 @@ class ContextAdvisorImpl extends ContextAdvisor:
   private def retrieveDataObjectIds(context: SDLBContext): List[ContextSuggestion] =
     Option(context.textContext.rootConfig.root().get("dataObjects")) match
       case Some(asConfigObject: ConfigObject) => asConfigObject.unwrapped().toScala.map { (k, v) => v match
-        case jMap: JMap[String, Object] => ContextSuggestion(k, Option(jMap.get("type")).map(_.toString).getOrElse(""))
+        case jMap: JMap[?, ?] => ContextSuggestion(k, Option(jMap.get("type")).map(_.toString).getOrElse(""))
         case _ => ContextSuggestion(k, "")
       }.toList
       case _ => List.empty[ContextSuggestion]

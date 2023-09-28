@@ -68,7 +68,10 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
     localSchema.obj.get(DESCRIPTION)
       .map(_.str)
       .orElse(localSchema.obj.get(ADDITIONAL_PROPERTIES)
-        .flatMap(_.obj.get(DESCRIPTION).map(_.str)))
+        .flatMap{
+          case Obj(value) => value.get(DESCRIPTION).map(_.str)
+          case _ => None
+        })
       .getOrElse("")
   private def generateTemplates(oneOf: Value): Iterable[(String, Iterable[SchemaItem])] =
     oneOf match

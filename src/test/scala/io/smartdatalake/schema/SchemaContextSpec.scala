@@ -288,5 +288,10 @@ class SchemaContextSpec extends UnitSpec {
     dataFrameIncrementalModeContext.getDescription.take(21) shouldBe "Compares max entry in"
   }
 
+  it should "remain quiet if executed on the global schema" in {
+    val globalContext = initialSchemaContext
+    globalContext.getDescription shouldBe ""
+  }
+
 
 }

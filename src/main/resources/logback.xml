@@ -17,7 +17,7 @@
     </appender>
 
     <!-- Root logger settings -->
-    <root level="info">
+    <root level="trace"> <!--TODO change to level="info" when releasing first official version-->
         <appender-ref ref="FILE"/>
     </root>
 

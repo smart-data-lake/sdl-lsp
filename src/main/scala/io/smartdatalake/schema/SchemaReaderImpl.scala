@@ -26,8 +26,12 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
     case Some(schemaContext) => schemaContext.generateSchemaSuggestions
   override def retrieveDescription(context: SDLBContext): String = if isWordMeaningless(context.word) then "" else
     retrieveSchemaContext(context, withWordInPath = true) match
-      case None => ""
-      case Some(schemaContext) => schemaContext.getDescription
+      case None =>
+        logger.debug("No schema could be retrieved")
+        ""
+      case Some(schemaContext) =>
+        logger.debug("Schema retrieved: {}", schemaContext.toString.take(300))
+        schemaContext.getDescription
 
   /**
    * Not a crucial method but useful to speedup query process and might avoid some unwanted crash
@@ -44,7 +48,7 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
     logger.debug("path = {}", path)
     path.foldLeft((oInitialSchemaContext, rootConfigValue)){(scCv, elementPath) =>
       val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(scCv._2, elementPath)
-      if (newConfigValue == null) {logger.error("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
+      if (newConfigValue == null) {logger.warn("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
       val newSchemaContext = oTypeObject match
         case Some(objectType) =>
           val tryUpdateByName = scCv._1.flatMap(_.updateByName(elementPath))
