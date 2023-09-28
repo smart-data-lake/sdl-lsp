@@ -72,23 +72,7 @@ class SDLBContextSpec extends UnitSpec {
     val line24EdgeInsideAgain = SDLBContext.fromText(withListText).withCaretPosition(24, 7)
     line24EdgeInsideAgain.parentPath shouldBe List("actions", "join-departures-airports", "transformers", "1")
     line24EdgeInsideAgain.word shouldBe "{"
-
-    //TODO:
-    // 3. Adapt SDLBCompletionEngine and HoverEngine
-    // 4. Adapt all necessary tests => especially SchemaContextSpec and SDLBCompletionEngineSpec and SDLBHoverEngineSpec and maybe SchemaReaderSpec
-
-    // KNOWN PROBLEMS
-    // 1. executionMode has its oneOf not generating templates
-    // >>>>>>>>>2. executionMode with a provided type does not generate properties <<<<<<< SOLVED
-    // >>>>>>>>>3. executionMode is shown as being a String which is wrong <<<<<<<<<< SOLVED
-    // >>>>4. Templates within element of lists should be anonymous... See how to generate them anyway then <<<<< SOLVED
-    // 5. Tabulation format: Indentation is not correctly generated
-    // >>>>6. Missing intelligence between DataObjects and Actions <<< SOLVED
-    // 7. Redo Hovering
-    // >>>>>>>8. Items are not removed if already existing <<<<<<< SOLVED
-    // >>>>>>>9. If type is not provided it should be suggested. <<<<<< SOLVED
-    // 10. Values of type should be suggested.
-    // 11. Suggest 4 basic properties when in root level
+    
   }
 
   it should "create a context correctly when in a list but not in an element directly" in {

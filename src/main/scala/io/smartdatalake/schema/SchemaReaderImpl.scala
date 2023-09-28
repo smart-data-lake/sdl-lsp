@@ -38,22 +38,20 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
     word.filterNot(Set('{', '}', '[', ']', '"', '(', ')', '#', '/', '\\', '.').contains(_)).isBlank
 
   private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] =
-    val rootConfig = context.textContext.rootConfig
     val path = if withWordInPath then context.parentPath.appended(context.word) else context.parentPath
-    path match
-      case Nil => Some(createGlobalSchemaContext)
-      case globalObject::remainingPath =>
-        val schemaContext = createGlobalSchemaContext.updateByName(globalObject)
-        val rootConfigValue = rootConfig.getValue(globalObject)
-        remainingPath.foldLeft((schemaContext, rootConfigValue)){(scCv, elementPath) =>
-          val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(scCv._2, elementPath)
-          val newSchemaContext = oTypeObject match
-            case Some(objectType) =>
-              val tryUpdateByName = scCv._1.flatMap(_.updateByName(elementPath))
-              tryUpdateByName.orElse(scCv._1).flatMap(_.updateByType(objectType))
-            case None => scCv._1.flatMap(_.updateByName(elementPath))
-          (newSchemaContext, newConfigValue)
-        }._1
+    val oInitialSchemaContext: Option[SchemaContext] = Some(createGlobalSchemaContext)
+    val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()
+    logger.debug("path = {}", path)
+    path.foldLeft((oInitialSchemaContext, rootConfigValue)){(scCv, elementPath) =>
+      val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(scCv._2, elementPath)
+      if (newConfigValue == null) {logger.error("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
+      val newSchemaContext = oTypeObject match
+        case Some(objectType) =>
+          val tryUpdateByName = scCv._1.flatMap(_.updateByName(elementPath))
+          tryUpdateByName.orElse(scCv._1).flatMap(_.updateByType(objectType))
+        case None => scCv._1.flatMap(_.updateByName(elementPath))
+      (newSchemaContext, newConfigValue)
+    }._1
   end retrieveSchemaContext
 
   private[schema] def moveInConfigAndRetrieveType(config: ConfigValue, path: String): (ConfigValue, Option[String]) =
@@ -68,7 +66,6 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
         config
 
     val objectType = retrieveType(newConfig)
-    if (newConfig == null) {logger.error("Error, newConfig is null with path={}, config={}", path, config)}
     (newConfig, objectType)
 
   private def retrieveType(config: ConfigValue): Option[String] = config match

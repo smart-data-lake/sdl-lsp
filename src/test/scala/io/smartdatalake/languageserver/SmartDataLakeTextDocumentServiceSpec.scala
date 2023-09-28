@@ -2,7 +2,7 @@ package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
-import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position, TextDocumentItem}
+import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position, TextDocumentIdentifier, TextDocumentItem}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
   
@@ -10,6 +10,9 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val p = new CompletionParams()
     // Careful, Position of LSP4J is 0-based
     p.setPosition(new Position(16, 0))
+    val textDocumentIdentifier = new TextDocumentIdentifier()
+    textDocumentIdentifier.setUri("example.conf")
+    p.setTextDocument(textDocumentIdentifier)
     p
 
   "SDL text document service" should "suggest at least one autocompletion item" in {
@@ -24,6 +27,9 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val params = new HoverParams()
     // Careful, Position of LSP4J is 0-based
     params.setPosition(new Position(5, 4))
+    val textDocumentIdentifier = new TextDocumentIdentifier()
+    textDocumentIdentifier.setUri("example.conf")
+    params.setTextDocument(textDocumentIdentifier)
     val hoverInformation = textDocumentService.hover(params)
     assert(!hoverInformation.get().getContents.getRight.getValue.isBlank)
   }
@@ -31,6 +37,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val didOpenTextDocumentParams: DidOpenTextDocumentParams = new DidOpenTextDocumentParams()
     val textDocumentItem: TextDocumentItem = new TextDocumentItem()
     textDocumentItem.setText(loadFile("fixture/hocon/with-multi-lines-example.conf"))
+    textDocumentItem.setUri("example.conf")
     didOpenTextDocumentParams.setTextDocument(textDocumentItem)
     textDocumentService.didOpen(didOpenTextDocumentParams)
   }

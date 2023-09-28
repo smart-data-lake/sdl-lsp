@@ -8,6 +8,7 @@ import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
+import org.slf4j.LoggerFactory
 
 import java.util
 import java.util.concurrent.CompletableFuture
@@ -17,11 +18,12 @@ import scala.util.Using
 
 class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine, private val hoverEngine: SDLBHoverEngine)(using ExecutionContext) extends TextDocumentService {
 
-  private var context: SDLBContext = SDLBContext.EMPTY_CONTEXT
+  private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
 
     Future {
+      val context = uriToContextMap(params.getTextDocument.getUri)
       val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems: util.List[CompletionItem] = completionEngine.generateCompletionItems(caretContext).toJava
       Left(completionItems).toJava
@@ -30,20 +32,21 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
   }
 
   override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
-    context = SDLBContext.fromText(didOpenTextDocumentParams.getTextDocument.getText)
+    uriToContextMap += (didOpenTextDocumentParams.getTextDocument.getUri, SDLBContext.fromText(didOpenTextDocumentParams.getTextDocument.getText))
 
   override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit =
     val contentChanges = didChangeTextDocumentParams.getContentChanges
+    val context = uriToContextMap(didChangeTextDocumentParams.getTextDocument.getUri)
     val newContext =
       if contentChanges != null && contentChanges.size() > 0 then
         // Update the stored document content with the new content. Assuming Full sync technique
         context.withText(contentChanges.get(0).getText)
       else
         context
-    context = newContext
+    uriToContextMap += (didChangeTextDocumentParams.getTextDocument.getUri, newContext)
 
 
-  override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = ???
+  override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = uriToContextMap -= didCloseTextDocumentParams.getTextDocument.getUri
 
   override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = ???
 
@@ -51,7 +54,10 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def hover(params: HoverParams): CompletableFuture[Hover] = {
     Future {
+      val context = uriToContextMap(params.getTextDocument.getUri)
       val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
+      val logger = LoggerFactory.getLogger(getClass)
+      logger.trace("Attempt to hover with hoverContext={}", hoverContext)
       hoverEngine.generateHoveringInformation(hoverContext)
     }.toJava
   }

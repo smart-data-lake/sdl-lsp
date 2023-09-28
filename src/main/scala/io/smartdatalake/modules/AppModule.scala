@@ -1,6 +1,7 @@
 package io.smartdatalake.modules
 
 import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineImpl}
+import io.smartdatalake.context.{ContextAdvisor, ContextAdvisorImpl}
 import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
 import io.smartdatalake.languageserver.{SmartDataLakeLanguageServer, SmartDataLakeTextDocumentService, SmartDataLakeWorkspaceService}
 import io.smartdatalake.schema.{SchemaReader, SchemaReaderImpl}
@@ -11,7 +12,8 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 trait AppModule {
   lazy val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json")
-  lazy val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl(schemaReader)
+  lazy val contextAdvisor: ContextAdvisor = new ContextAdvisorImpl
+  lazy val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl(schemaReader, contextAdvisor)
   lazy val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl(schemaReader)
   lazy val executorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val executionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(executorService)

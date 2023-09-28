@@ -2,7 +2,7 @@ package io.smartdatalake.completion
 
 import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.completion.SDLBCompletionEngine
-import io.smartdatalake.context.{SDLBContext, TextContext}
+import io.smartdatalake.context.{ContextAdvisor, ContextSuggestion, SDLBContext, TextContext}
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl, TemplateType}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
@@ -10,28 +10,17 @@ import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind}
 
 import scala.util.{Failure, Success, Try}
 
-class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends SDLBCompletionEngine {
+class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private val contextAdvisor: ContextAdvisor) extends SDLBCompletionEngine {
   
   override def generateCompletionItems(context: SDLBContext): List[CompletionItem] =
     val itemSuggestionsFromSchema = schemaReader.retrieveAttributeOrTemplateCollection(context) match
       case AttributeCollection(attributes) => generateAttributeSuggestions(attributes, context.getParentContext)
       case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType)
 
-    val itemSuggestionsFromConfig = generateItemSuggestionsFromConfig(context)
-    val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema //TODO better split schema and config suggestions
-    if allItems.isEmpty then typeList else allItems
-
-  private def generateItemSuggestionsFromConfig(context: SDLBContext): List[CompletionItem] = context.parentPath.lastOption match
-    case Some(value) => value match
-      case "inputId" | "outputId" | "inputIds" | "outputIds" => retrieveDataObjectIds(context) //TODO regex?
-      case _ => List.empty[CompletionItem]
-    case None => List.empty[CompletionItem]
-
-  private def retrieveDataObjectIds(context: SDLBContext): List[CompletionItem] = //TODO test. TODO return List[String] instead?
-    context.textContext.rootConfig.getValue("dataObjects") match
-      case asConfigObject: ConfigObject => asConfigObject.unwrapped().keySet().toScala.toList.map(createCompletionItem)
-
-      case _ => List.empty[CompletionItem]
+    val itemSuggestionsFromConfig = contextAdvisor.generateSuggestions(context).map(createCompletionItem)
+    val allItems = itemSuggestionsFromConfig ++ itemSuggestionsFromSchema
+    if allItems.isEmpty then typeList else allItems //TODO wrong
+    
   private def generateAttributeSuggestions(attributes: Iterable[SchemaItem], parentContext: Option[ConfigValue]): List[CompletionItem] =
     val items = parentContext match
       case Some(config: ConfigObject) => attributes.filter(item => Option(config.get(item.name)).isEmpty)
@@ -66,11 +55,11 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader) extends S
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem
 
-  private def createCompletionItem(item: String): CompletionItem =
+  private def createCompletionItem(item: ContextSuggestion): CompletionItem =
     val completionItem = new CompletionItem()
-    completionItem.setLabel(item)
-    completionItem.setDetail(s"   dataObject $item")
-    completionItem.setInsertText(item)
+    completionItem.setLabel(item.value)
+    completionItem.setDetail(s"   ${item.label}")
+    completionItem.setInsertText(item.value)
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem
 

@@ -16,6 +16,8 @@ case class TextContext private (originalText: String, configText: String, rootCo
     val newConfig = HoconParser.parse(newConfigText).getOrElse(HoconParser.EMPTY_CONFIG)
     if newConfig == HoconParser.EMPTY_CONFIG then this else TextContext(newText, newConfigText, newConfig)
 
+  override def toString: String = s"TextContext(originalText=${originalText.take(50)}, configText=${configText.take(50)}, rootConfig=${rootConfig.toString.take(50)})"
+
 
 }
 
