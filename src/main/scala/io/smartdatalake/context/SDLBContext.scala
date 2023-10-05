@@ -16,7 +16,7 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
     val TextContext(originalText, configText, config) = textContext
     if originalLine <= 0 || originalLine > originalText.count(_ == '\n') + 1 || originalCol < 0 then this else
       val (newLine, newCol) = MultiLineTransformer.computeCorrectedPosition(originalText, originalLine, originalCol)
-      val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol)
+      val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol) //TODO idea to autogenerate placeholder value: if word == '=' or '' then we might add "???" and start again?
       val (parentLine, _) = HoconParser.retrieveDirectParent(configText, newLine, newCol)
       val (parentPathInitialList, isParentListKind) = HoconParser.retrievePathList(config, parentLine)
       val oIndex = HoconParser.findIndexIfInList(configText, newLine, newCol)

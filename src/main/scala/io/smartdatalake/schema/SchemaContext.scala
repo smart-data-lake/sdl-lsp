@@ -31,6 +31,14 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
         None
   }
 
+  def generateSchemaSuggestionsForAttributeType: AttributeCollection =
+    val oTemplates = generateSchemaSuggestions
+    oTemplates match
+      case tc : TemplateCollection => AttributeCollection(tc.templates.map { (name, _) =>
+        SchemaItem(name, ItemType.TYPE_VALUE, "", false)
+      })
+      case ac : AttributeCollection => ac
+
   def generateSchemaSuggestions: AttributeCollection | TemplateCollection =
     val asObject = localSchema.obj
     asObject.get(SCHEMA_TYPE) match

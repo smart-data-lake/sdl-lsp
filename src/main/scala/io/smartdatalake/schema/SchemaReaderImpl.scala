@@ -21,9 +21,13 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
 
   private[schema] def createGlobalSchemaContext: SchemaContext = SchemaContext(schema, schema)
 
-  override def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection = retrieveSchemaContext(context, withWordInPath = false) match
-    case None => AttributeCollection(Iterable.empty)
-    case Some(schemaContext) => schemaContext.generateSchemaSuggestions
+  override def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection = context.parentPath.lastOption match
+    case Some("type") =>
+      val schemaContext = retrieveSchemaContextForTypeAttribute(context)
+      schemaContext.generateSchemaSuggestionsForAttributeType
+    case _ => retrieveSchemaContext(context, withWordInPath = false) match
+      case None => AttributeCollection(Iterable.empty)
+      case Some(schemaContext) => schemaContext.generateSchemaSuggestions
   override def retrieveDescription(context: SDLBContext): String = if isWordMeaningless(context.word) then "" else
     retrieveSchemaContext(context, withWordInPath = true) match
       case None =>
@@ -41,7 +45,30 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
   private def isWordMeaningless(word: String): Boolean =
     word.filterNot(Set('{', '}', '[', ']', '"', '(', ')', '#', '/', '\\', '.').contains(_)).isBlank
 
-  private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] =
+  private def retrieveSchemaContextForTypeAttribute(context: SDLBContext): SchemaContext =
+    @tailrec
+    def moveInBestEffort(path: List[String], schemaContext: SchemaContext, configValue: ConfigValue): SchemaContext = path match
+      case Nil => schemaContext
+      case elementPath::remainingPath =>
+        val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(configValue, elementPath)
+        if newConfigValue == null then schemaContext else
+          val tryUpdateByName = schemaContext.updateByName(elementPath).getOrElse(schemaContext)
+          oTypeObject match
+            case Some(objectType) =>
+              if remainingPath.size > 1 then // don't take the last type into account
+                moveInBestEffort(remainingPath, tryUpdateByName.updateByType(objectType).getOrElse(tryUpdateByName), newConfigValue)
+              else
+                moveInBestEffort(remainingPath, tryUpdateByName, newConfigValue)
+            case None =>
+              moveInBestEffort(remainingPath, tryUpdateByName, newConfigValue)
+    end moveInBestEffort
+
+    val path = context.parentPath
+    val initialSchemaContext = createGlobalSchemaContext
+    val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()
+    moveInBestEffort(path, initialSchemaContext, rootConfigValue)
+
+  private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] = //TODO adapt to let customize path for descriptions of types
     val path = if withWordInPath then context.parentPath.appended(context.word) else context.parentPath
     val oInitialSchemaContext: Option[SchemaContext] = Some(createGlobalSchemaContext)
     val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()

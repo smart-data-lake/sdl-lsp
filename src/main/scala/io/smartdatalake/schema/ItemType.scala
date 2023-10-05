@@ -8,6 +8,7 @@ enum ItemType(val name: String, val defaultValue: String) {
   case INTEGER extends ItemType("integer", "0")
   case OBJECT extends ItemType("object", "{}")
   case ARRAY extends ItemType("array", "[]")
+  case TYPE_VALUE extends ItemType("type", "")
   
   def isPrimitiveValue: Boolean = this == ItemType.STRING || this == ItemType.BOOLEAN || this == ItemType.INTEGER
   

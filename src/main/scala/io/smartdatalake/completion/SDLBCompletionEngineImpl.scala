@@ -56,7 +56,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     completionItem.setLabel(item.name)
     val trailingSpaces = " " * (2 + longestItemLength - item.name.length)
     completionItem.setDetail(trailingSpaces + s"${if item.required then "required" else ""} ${item.itemType.name}")
-    completionItem.setInsertText(item.name + (if item.itemType == ItemType.OBJECT then " " else " = ") + item.itemType.defaultValue)
+    completionItem.setInsertText(item.name + (if Set(ItemType.OBJECT, ItemType.TYPE_VALUE).contains(item.itemType) then " " else " = ") + item.itemType.defaultValue)
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem
 

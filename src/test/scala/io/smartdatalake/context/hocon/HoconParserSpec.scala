@@ -183,7 +183,11 @@ class HoconParserSpec extends UnitSpec {
       CaretData(32, leftCol, 31, "metadata", List("actions", "join-departures-airports", "metadata")),
       CaretData(33, leftCol, 31, "metadata", List("actions", "join-departures-airports", "metadata")),
       CaretData(34, leftCol, 15, "join-departures-airports", List("actions", "join-departures-airports")),
-      CaretData(35, leftCol, 1, "actions", List("actions"))
+      CaretData(35, leftCol, 34, "executionMode", List("actions", "join-departures-airports", "executionMode")),
+      CaretData(36, leftCol, 34, "executionMode", List("actions", "join-departures-airports", "executionMode")),
+      CaretData(37, leftCol, 34, "executionMode", List("actions", "join-departures-airports", "executionMode")),
+      CaretData(38, leftCol, 15, "join-departures-airports", List("actions", "join-departures-airports")),
+      CaretData(39, leftCol,  1, "actions", List("actions"))
     )
 
     validateText(fixture, leftCol, leftCaretData)
@@ -222,8 +226,12 @@ class HoconParserSpec extends UnitSpec {
       CaretData(31, rightCol, 31, "metadata", List("actions", "join-departures-airports", "metadata")),
       CaretData(32, rightCol, 32, "feed", List("actions", "join-departures-airports", "metadata", "feed")),
       CaretData(33, rightCol, 15, "join-departures-airports", List("actions", "join-departures-airports")),
-      CaretData(34, rightCol, 1, "actions", List("actions")),
-      CaretData(35, rightCol, 0, "", List())
+      CaretData(34, rightCol, 34, "executionMode", List("actions", "join-departures-airports", "executionMode")),
+      CaretData(35, rightCol, 35, "type", List("actions", "join-departures-airports", "executionMode", "type")),
+      CaretData(36, rightCol, 36, "className", List("actions", "join-departures-airports", "executionMode", "className")),
+      CaretData(37, rightCol, 15, "join-departures-airports", List("actions", "join-departures-airports")),
+      CaretData(38, rightCol, 1, "actions", List("actions")),
+      CaretData(39, rightCol, 0, "", List())
     )
 
     validateText(fixture, rightCol, rightCaretData)

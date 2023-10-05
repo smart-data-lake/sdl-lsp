@@ -91,4 +91,20 @@ class SchemaReaderSpec extends UnitSpec {
     schemaReader.retrieveDescription(context) shouldBe "Additional metadata for an Action"
   }
 
+  it should "create a list of Actions attributes when parent is type" in {
+    val context = initialContext.withCaretPosition(16, 11)
+    val attributes = schemaReader.retrieveAttributeOrTemplateCollection(context).asInstanceOf[AttributeCollection].attributes
+    attributes should have size 8
+    attributes.map(_.itemType).forall(_ == ItemType.TYPE_VALUE) shouldBe true
+    attributes.map(_.name) should contain ("CopyAction")
+  }
+
+  it should "create a list of ExecutionMode types when parent is type" in {
+    val context = initialContext.withCaretPosition(35, 13)
+    val attributes = schemaReader.retrieveAttributeOrTemplateCollection(context).asInstanceOf[AttributeCollection].attributes
+    attributes should have size 10
+    attributes.map(_.itemType).forall(_ == ItemType.TYPE_VALUE) shouldBe true
+    attributes.map(_.name) should contain ("ProcessAllMode")
+  }
+
 }
