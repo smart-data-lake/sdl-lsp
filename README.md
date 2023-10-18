@@ -32,7 +32,7 @@ To be able to build an executable jar with this project, you will need:
 * Click on the gear aside `Marketplace` and `Installed` and click on `Install Plugin from disk...`. Add the downloaded plugin.
 * Go to `Settings > Languages & Frameworks > Language Server Protocol > Server definitions`
 * Choose `Raw command | Extension: conf | Command: java -jar ${path-to-project}/target/sdl-lsp-1.0-SNAPSHOT-jar-with-dependencies.jar`. Be sure you ran `mvn clean package` before.
-* A red, yellow or green dot should have appeared in the bottom of your IDE. Red just means the LSP is inactive, yello means the LSP is initializing and green means up and running. You can check timeouts, restart the server or check the connected files.
+* A red, yellow or green dot should have appeared in the bottom of your IDE. Red just means the LSP is inactive, yellow means the LSP is initializing and green means up and running. You can check timeouts, restart the server or check the connected files.
 
 
 ## Authors
