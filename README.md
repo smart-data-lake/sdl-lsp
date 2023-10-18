@@ -19,7 +19,7 @@ Usually the client has responsibility to start the server. They first communicat
 ### Dependencies
 To be able to build an executable jar with this project, you will need:
 * maven
-* java 8 or newer
+* java 11 or newer
 ### Installing
 
 * Clone the repo locally.
@@ -27,7 +27,7 @@ To be able to build an executable jar with this project, you will need:
 
 ### Setting a basic LSP client in Intellij
 
-* Download the generic LSP support for Intellij [here](https://plugins.jetbrains.com/plugin/10209-lsp-support)
+* Download the generic LSP support for Intellij [here](https://plugins.jetbrains.com/plugin/10209-lsp-support). Please note that if you are running an Intellij version later than 2022.X.X, you will be warned that the plugin is not compatible with your Intellij version, but you should be able to run it nevertheless. Please ignore this warning.
 * Go to `plugins` in your Intellij IDE.
 * Click on the gear aside `Marketplace` and `Installed` and click on `Install Plugin from disk...`. Add the downloaded plugin.
 * Go to `Settings > Languages & Frameworks > Language Server Protocol > Server definitions`
