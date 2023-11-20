@@ -195,22 +195,39 @@
       </distributionManagement>
       <build>
         <plugins>
-          <!-- create scala-doc -->
           <plugin>
+            <!-- see http://davidb.github.com/scala-maven-plugin -->
             <groupId>net.alchim31.maven</groupId>
             <artifactId>scala-maven-plugin</artifactId>
-            <version>4.5.6</version>
+            <version>4.5.4</version>
             <executions>
               <execution>
-                <id>scala-doc</id>
                 <goals>
-                  <goal>doc-jar</goal>
+                  <goal>compile</goal>
                 </goals>
-                <configuration>
-                  <args>
-                    <arg>-no-link-warnings</arg>
-                  </args>
-                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>2.4</version>
+            <configuration>
+              <descriptorRefs>
+                <descriptorRef>jar-with-dependencies</descriptorRef>
+              </descriptorRefs>
+              <archive>
+                <manifest>
+                  <mainClass>io.smartdatalake.Main</mainClass>
+                </manifest>
+              </archive>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>
