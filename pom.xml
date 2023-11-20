@@ -30,6 +30,31 @@
     <logback.version>1.4.11</logback.version>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>maven central</id>
+      <name>Maven Central Repository</name>
+      <url>https://repo1.maven.org/maven2/</url>
+    </repository>
+    <repository>
+      <id>confluent</id>
+      <name>Confluent Schema Repository</name>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+    <!-- smartdatalake snapshots -->
+    <repository>
+      <id>ossrh</id>
+      <name>ossrh snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
 
   <dependencies>
     <dependency>
@@ -152,4 +177,80 @@
 
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>release-sonatype</id>
+      <distributionManagement>
+        <snapshotRepository>
+          <id>ossrh</id>
+          <name>Central Repository OSSRH</name>
+          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+          <id>ossrh</id>
+          <name>Central Repository OSSRH</name>
+          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <!-- create scala-doc -->
+          <plugin>
+            <groupId>net.alchim31.maven</groupId>
+            <artifactId>scala-maven-plugin</artifactId>
+            <version>4.5.6</version>
+            <executions>
+              <execution>
+                <id>scala-doc</id>
+                <goals>
+                  <goal>doc-jar</goal>
+                </goals>
+                <configuration>
+                  <args>
+                    <arg>-no-link-warnings</arg>
+                  </args>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- sign artifacts with gpg -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <!-- Prevent `gpg` from using pinentry programs -->
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- deploy to sonatype / maven central -->
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>1.6.13</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>false</autoReleaseAfterClose>
+              <stagingProgressTimeoutMinutes>30</stagingProgressTimeoutMinutes>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
