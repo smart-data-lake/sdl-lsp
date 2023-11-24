@@ -205,6 +205,9 @@
       </distributionManagement>
       <build>
         <plugins>
+          <!-- Builds an empty javadoc jar to be able to publish the jar into sonatype.
+           There is incompatibilities with scala-maven-plugin with the goal doc-jar and scala 3 currently (2023-11-24).
+           Please feel free to actually generate the javadoc once the incompatibility is resolved. -->
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
