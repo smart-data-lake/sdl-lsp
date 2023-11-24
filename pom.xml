@@ -36,11 +36,6 @@
       <name>Maven Central Repository</name>
       <url>https://repo1.maven.org/maven2/</url>
     </repository>
-    <repository>
-      <id>confluent</id>
-      <name>Confluent Schema Repository</name>
-      <url>https://packages.confluent.io/maven/</url>
-    </repository>
     <!-- smartdatalake snapshots -->
     <repository>
       <id>ossrh</id>
@@ -105,7 +100,22 @@
 
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
+    <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
+      <!-- Creates a JAR file with the source files of the project. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <!-- see http://davidb.github.com/scala-maven-plugin -->
         <groupId>net.alchim31.maven</groupId>
@@ -196,38 +206,20 @@
       <build>
         <plugins>
           <plugin>
-            <!-- see http://davidb.github.com/scala-maven-plugin -->
-            <groupId>net.alchim31.maven</groupId>
-            <artifactId>scala-maven-plugin</artifactId>
-            <version>4.5.4</version>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
             <executions>
               <execution>
-                <goals>
-                  <goal>compile</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <version>2.4</version>
-            <configuration>
-              <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-              </descriptorRefs>
-              <archive>
-                <manifest>
-                  <mainClass>io.smartdatalake.Main</mainClass>
-                </manifest>
-              </archive>
-            </configuration>
-            <executions>
-              <execution>
+                <id>fake-scaladoc-jar</id>
                 <phase>package</phase>
                 <goals>
-                  <goal>single</goal>
+                  <goal>exec</goal>
                 </goals>
+                <configuration>
+                  <executable>touch</executable>
+                  <arguments><argument>target/${project.artifactId}-${project.version}-javadoc.jar</argument></arguments>
+                </configuration>
               </execution>
             </executions>
           </plugin>
