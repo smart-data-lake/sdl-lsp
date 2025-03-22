@@ -36,7 +36,7 @@ object Main extends AppModule {
 
   private def startServer(in: InputStream, out: PrintStream) = {
     val logger = LoggerFactory.getLogger(getClass)
-    val helloLanguageServer: LanguageServer & LanguageClientAware = languageServer
+    val sdlbLanguageServer: LanguageServer & LanguageClientAware = languageServer
 
     try
       val launcher: Launcher[LanguageClient] = Launcher.Builder[LanguageClient]()
@@ -45,11 +45,11 @@ object Main extends AppModule {
         .setInput(in)
         .setOutput(out)
         .setRemoteInterface(classOf[LanguageClient])
-        .setLocalService(helloLanguageServer)
+        .setLocalService(sdlbLanguageServer)
         .create()
 
       val client: LanguageClient = launcher.getRemoteProxy
-      helloLanguageServer.connect(client)
+      sdlbLanguageServer.connect(client)
       // Use the configured logger
       logger.info("Server starts listening...")
       launcher.startListening().get()

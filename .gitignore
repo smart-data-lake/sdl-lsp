@@ -1,3 +1,6 @@
 lsp
 target
 logs
+.bloop
+.metals
+.vscode
