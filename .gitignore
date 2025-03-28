@@ -4,3 +4,5 @@ logs
 .bloop
 .metals
 .vscode
+.idea
+*.iml

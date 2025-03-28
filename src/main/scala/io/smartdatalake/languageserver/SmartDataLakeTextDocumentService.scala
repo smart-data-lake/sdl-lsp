@@ -4,10 +4,19 @@ import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineIm
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
 import io.smartdatalake.schema.SchemaReader
+import io.smartdatalake.client.{ClientAware, ClientType}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
-import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind, Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit}
+import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams,
+  Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
+  DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+  DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
+  DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams,
+  DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover,
+  HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind,
+  Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams,
+  SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit, InsertTextMode}
 import org.slf4j.LoggerFactory
 
 import java.util
@@ -16,17 +25,28 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 import scala.util.Using
 
-class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine, private val hoverEngine: SDLBHoverEngine)(using ExecutionContext) extends TextDocumentService {
+class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine,
+      private val hoverEngine: SDLBHoverEngine)(using ExecutionContext)
+      extends TextDocumentService with ClientAware {
 
   private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
-
+    import ClientType.*
     Future {
       val context = uriToContextMap(params.getTextDocument.getUri)
       val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
-      val completionItems: util.List[CompletionItem] = completionEngine.generateCompletionItems(caretContext).toJava
-      Left(completionItems).toJava
+      val completionItems: List[CompletionItem] = completionEngine.generateCompletionItems(caretContext)
+      val completionItemsClientAware = completionItems.map { item => clientType match
+        case IntelliJ =>
+          item.setInsertTextMode(InsertTextMode.AsIs)
+          item
+        case VSCode | Unknown => 
+          item.setInsertTextMode(InsertTextMode.AdjustIndentation)
+          item
+      }
+      
+      Left(completionItemsClientAware.toJava).toJava
     }.toJava
 
   }
