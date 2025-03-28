@@ -6,7 +6,7 @@ import io.smartdatalake.context.{ContextAdvisor, ContextSuggestion, SDLBContext,
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, SchemaReaderImpl, TemplateType}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
-import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, InsertTextFormat, InsertTextMode}
+import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, InsertTextFormat}
 
 import scala.util.{Failure, Success, Try}
 
@@ -56,7 +56,6 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       
       completionItem.setKind(CompletionItemKind.Snippet)
       completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
-      completionItem.setInsertTextMode(InsertTextMode.AsIs)
       completionItem
     }.toList
 
