@@ -20,8 +20,8 @@
   </licenses>
 
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
     <encoding>UTF-8</encoding>
     <scala.version>3.3.4</scala.version> <!-- Scala 2.12 not working because of copies of annotations issues -->
     <lsp4j.version>0.21.0</lsp4j.version>

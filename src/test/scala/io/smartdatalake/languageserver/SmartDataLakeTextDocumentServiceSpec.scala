@@ -2,7 +2,9 @@ package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
-import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position, TextDocumentIdentifier, TextDocumentItem}
+import io.smartdatalake.client.ClientType
+import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position,
+  TextDocumentIdentifier, TextDocumentItem, InsertTextMode}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
   
@@ -22,7 +24,19 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     assert(completionResult.get().getLeft.size() > 0)
   }
 
-  it should "provides hovering information" in {
+  it should "provide suggestions format AdjustIndentation for VSCode" in {
+    checkInsertTextMode(ClientType.VSCode, InsertTextMode.AdjustIndentation)
+  }
+
+  it should "provide suggestions format AsIs for IntelliJ" in {
+    checkInsertTextMode(ClientType.IntelliJ, InsertTextMode.AsIs)
+  }
+  
+  it should "provide suggestions format AdjustIndentation for Unknown" in {
+    checkInsertTextMode(ClientType.Unknown, InsertTextMode.AdjustIndentation)
+  }
+
+  it should "provide hovering information" in {
     notifyOpenFile()
     val params = new HoverParams()
     // Careful, Position of LSP4J is 0-based
@@ -33,6 +47,20 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val hoverInformation = textDocumentService.hover(params)
     assert(!hoverInformation.get().getContents.getRight.getValue.isBlank)
   }
+
+  private def checkInsertTextMode(clientType: ClientType, insertTextMode: InsertTextMode): Unit = {
+    notifyOpenFile()
+    val oldClient = textDocumentService.clientType
+    textDocumentService.clientType = clientType
+    val completionResult = textDocumentService.completion(params)
+    assert(completionResult.get.isLeft)
+    val completionItems = completionResult.get().getLeft
+    assert(completionItems.size() > 0)
+    val firstItem = completionItems.get(0)
+    assert(firstItem.getInsertTextMode == insertTextMode)
+    textDocumentService.clientType = oldClient
+  }
+
   private def notifyOpenFile(): Unit = {
     val didOpenTextDocumentParams: DidOpenTextDocumentParams = new DidOpenTextDocumentParams()
     val textDocumentItem: TextDocumentItem = new TextDocumentItem()

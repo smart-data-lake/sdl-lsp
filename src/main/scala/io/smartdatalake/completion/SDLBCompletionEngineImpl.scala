@@ -66,11 +66,11 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     
     val valuePart = 
       if Set(ItemType.OBJECT, ItemType.TYPE_VALUE).contains(item.itemType) then 
-        " " 
+        s" ${item.itemType.defaultValue}" 
       else 
-        " = ${1:" + item.itemType.defaultValue + "}"
+        s" = ${item.itemType.defaultValue}"
     
-    completionItem.setInsertText(item.name + valuePart + "$0")
+    completionItem.setInsertText(item.name + valuePart)
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
     completionItem

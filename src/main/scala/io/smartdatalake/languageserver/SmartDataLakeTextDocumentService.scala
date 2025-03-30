@@ -68,7 +68,7 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = uriToContextMap -= didCloseTextDocumentParams.getTextDocument.getUri
 
-  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = ???
+  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = return
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = ???
 
@@ -84,14 +84,33 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)
 
+  /**
+    * To be used to navigate to the definition of a field
+    *
+    * @param params
+    * @return
+    */
   override def definition(params: DefinitionParams): CompletableFuture[messages.Either[util.List[_ <: Location], util.List[_ <: LocationLink]]] = super.definition(params)
 
+  /**
+    * 
+    * To be used to navigate to the reference of a field: the other way around than definition
+    *
+    * @param referenceParams
+    * @return
+    */
   override def references(referenceParams: ReferenceParams): CompletableFuture[util.List[_ <: Location]] = ???
 
   override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[util.List[_ <: DocumentHighlight]] = super.documentHighlight(params)
 
   override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[messages.Either[SymbolInformation, DocumentSymbol]]] = super.documentSymbol(params)
 
+  /**
+    * To be used to suggest missing required fields for example
+    *
+    * @param params
+    * @return
+    */
   override def codeAction(params: CodeActionParams): CompletableFuture[util.List[messages.Either[Command, CodeAction]]] = super.codeAction(params)
 
   override def codeLens(codeLensParams: CodeLensParams): CompletableFuture[util.List[_ <: CodeLens]] = ???
