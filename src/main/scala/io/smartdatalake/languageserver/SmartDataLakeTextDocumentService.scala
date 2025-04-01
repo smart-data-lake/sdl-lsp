@@ -24,12 +24,16 @@ import java.util.concurrent.CompletableFuture
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 import scala.util.Using
+import io.smartdatalake.logging.SDLBLogger
+import io.smartdatalake.formatting.{FormattingStrategy, FormattingStrategyFactory}
+import org.eclipse.lsp4j.CompletionTriggerKind
 
 class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine)(using ExecutionContext)
-      extends TextDocumentService with ClientAware {
+      extends TextDocumentService with ClientAware with SDLBLogger {
 
   private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
+  private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
     import ClientType.*
@@ -37,16 +41,9 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
       val context = uriToContextMap(params.getTextDocument.getUri)
       val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems: List[CompletionItem] = completionEngine.generateCompletionItems(caretContext)
-      val completionItemsClientAware = completionItems.map { item => clientType match
-        case IntelliJ =>
-          item.setInsertTextMode(InsertTextMode.AsIs)
-          item
-        case VSCode | Unknown => 
-          item.setInsertTextMode(InsertTextMode.AdjustIndentation)
-          item
-      }
+      val formattedCompletionItems = completionItems.map(formattingStrategy.formatCompletionItem(_, caretContext, params))
       
-      Left(completionItemsClientAware.toJava).toJava
+      Left(formattedCompletionItems.toJava).toJava
     }.toJava
 
   }
@@ -77,7 +74,7 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
       val context = uriToContextMap(params.getTextDocument.getUri)
       val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
       val logger = LoggerFactory.getLogger(getClass)
-      logger.trace("Attempt to hover with hoverContext={}", hoverContext)
+      trace(s"Attempt to hover with hoverContext=$hoverContext")
       hoverEngine.generateHoveringInformation(hoverContext)
     }.toJava
   }
@@ -117,6 +114,12 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def resolveCodeLens(codeLens: CodeLens): CompletableFuture[CodeLens] = ???
 
+  /**
+    * To be used to format the document and to retrieve the tab size
+    *
+    * @param documentFormattingParams
+    * @return
+    */
   override def formatting(documentFormattingParams: DocumentFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
 
   override def rangeFormatting(documentRangeFormattingParams: DocumentRangeFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???

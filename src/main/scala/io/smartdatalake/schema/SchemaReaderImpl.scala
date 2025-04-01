@@ -10,8 +10,9 @@ import ujson.{Arr, Bool, Null, Num, Obj, Str}
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.{Try, Using}
+import io.smartdatalake.logging.SDLBLogger
 
-class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
+class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLogger {
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
@@ -31,10 +32,10 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
   override def retrieveDescription(context: SDLBContext): String = if isWordMeaningless(context.word) then "" else
     retrieveSchemaContext(context, withWordInPath = true) match
       case None =>
-        logger.debug("No schema could be retrieved")
+        debug("No schema could be retrieved")
         ""
       case Some(schemaContext) =>
-        logger.debug("Schema retrieved: {}", schemaContext.toString.take(300))
+        debug("Schema retrieved: {}", schemaContext.toString.take(300))
         schemaContext.getDescription
 
   /**
@@ -68,14 +69,14 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
     val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()
     moveInBestEffort(path, initialSchemaContext, rootConfigValue)
 
-  private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] = //TODO adapt to let customize path for descriptions of types
+  private[schema] def retrieveSchemaContext(context: SDLBContext, withWordInPath: Boolean): Option[SchemaContext] =
     val path = if withWordInPath then context.parentPath.appended(context.word) else context.parentPath
     val oInitialSchemaContext: Option[SchemaContext] = Some(createGlobalSchemaContext)
     val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()
-    logger.debug("path = {}", path)
+    debug("path = {}", path)
     path.foldLeft((oInitialSchemaContext, rootConfigValue)){(scCv, elementPath) =>
       val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(scCv._2, elementPath)
-      if (newConfigValue == null) {logger.warn("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
+      if (newConfigValue == null) {warn("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
       val newSchemaContext = oTypeObject match
         case Some(objectType) =>
           val tryUpdateByName = scCv._1.flatMap(_.updateByName(elementPath))
@@ -89,11 +90,11 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader {
     val newConfig = config match
       case asConfigObject: ConfigObject => asConfigObject.get(path)
       case asConfigList: ConfigList => path.toIntOption.map(asConfigList.get).getOrElse {
-        logger.debug("Trying to access an index in config {} but given element path is not of type int: {}", config, path)
+        debug("Trying to access an index in config {} but given element path is not of type int: {}", config, path)
         config
       }
       case _ =>
-        logger.debug("Trying to move with config {} while receiving path element {}", config, path)
+        debug("Trying to move with config {} while receiving path element {}", config, path)
         config
 
     val objectType = retrieveType(newConfig)

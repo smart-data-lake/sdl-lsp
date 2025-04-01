@@ -10,6 +10,7 @@ import org.eclipse.lsp4j.services.{LanguageClientAware, LanguageServer, TextDocu
 
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait AppModule {
   lazy val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json")
@@ -18,9 +19,10 @@ trait AppModule {
   lazy val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl(schemaReader)
   lazy val executorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val executionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(executorService)
-  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine)(using executionContext)
+  lazy given ExecutionContext = executionContext
+  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
-  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService)(using executionContext)
+  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService)
 
 }
 

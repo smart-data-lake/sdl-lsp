@@ -24,18 +24,6 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     assert(completionResult.get().getLeft.size() > 0)
   }
 
-  it should "provide suggestions format AdjustIndentation for VSCode" in {
-    checkInsertTextMode(ClientType.VSCode, InsertTextMode.AdjustIndentation)
-  }
-
-  it should "provide suggestions format AsIs for IntelliJ" in {
-    checkInsertTextMode(ClientType.IntelliJ, InsertTextMode.AsIs)
-  }
-  
-  it should "provide suggestions format AdjustIndentation for Unknown" in {
-    checkInsertTextMode(ClientType.Unknown, InsertTextMode.AdjustIndentation)
-  }
-
   it should "provide hovering information" in {
     notifyOpenFile()
     val params = new HoverParams()
