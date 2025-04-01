@@ -16,9 +16,14 @@
         </encoder>
     </appender>
 
+    <appender name="LSP_CLIENT" class="io.smartdatalake.logging.ClientLogger">
+        <pattern>%date{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </appender>
+
     <!-- Root logger settings -->
-    <root level="trace"> <!--TODO change to level="info" when releasing first official version-->
+    <root level="trace">
         <appender-ref ref="FILE"/>
+        <appender-ref ref="LSP_CLIENT"/>
     </root>
 
 </configuration>

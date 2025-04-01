@@ -8,6 +8,7 @@ import jdk.jshell.spi.ExecutionControlProvider
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, LanguageServer}
+import org.eclipse.lsp4j.{MessageParams, MessageType}
 
 import java.io.{InputStream, OutputStream, PrintStream, PrintWriter}
 import org.slf4j.LoggerFactory
@@ -15,12 +16,15 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
+import org.eclipse.lsp4j.LogTraceParams
+import io.smartdatalake.logging.SDLBLogger
+import io.smartdatalake.logging.ClientLogger
 
 /**
  * @author scalathe
  */
 
-object Main extends AppModule {
+object Main extends AppModule with SDLBLogger {
     
   def main(args: Array[String]): Unit = {
     // Parse command line arguments
@@ -38,24 +42,23 @@ object Main extends AppModule {
   }
   
   private def parseClientType(args: Array[String]): ClientType = {
-    val logger = LoggerFactory.getLogger(getClass)
     
     def parseArgs(remainingArgs: List[String]): ClientType = remainingArgs match {
       case "--client" :: clientName :: _ => 
         clientName.toLowerCase match {
           case "vscode" => 
-            logger.info("Client identified as VSCode")
+            info("Client identified as VSCode")
             ClientType.VSCode
           case "intellij" => 
-            logger.info("Client identified as IntelliJ")
+            info("Client identified as IntelliJ")
             ClientType.IntelliJ
           case unknown =>
-            logger.warn(s"Unknown client type: $unknown, defaulting to Unknown")
+            warn(s"Unknown client type: $unknown, defaulting to Unknown")
             ClientType.Unknown
         }
       case _ :: tail => parseArgs(tail)
       case Nil => 
-        logger.info("No client type specified, defaulting to Unknown")
+        info("No client type specified, defaulting to Unknown")
         ClientType.Unknown
     }
     
@@ -63,7 +66,6 @@ object Main extends AppModule {
   }
 
   private def startServer(in: InputStream, out: PrintStream, clientType: ClientType) = {
-    val logger = LoggerFactory.getLogger(getClass)
     val sdlbLanguageServer: LanguageServer & LanguageClientAware = languageServer
 
     try
@@ -78,14 +80,15 @@ object Main extends AppModule {
 
       val client: LanguageClient = launcher.getRemoteProxy
       sdlbLanguageServer.connect(client)
+      ClientLogger.lspClient = Some(client)
       textDocumentService.clientType = clientType
       // Use the configured logger
-      logger.info("Server starts listening...")
+      info("Server starts listening...")
       launcher.startListening().get()
     catch
       case NonFatal(ex) =>
         ex.printStackTrace(out)
-        logger.error(ex.toString)
+        error(ex.toString)
 
     finally
       // Might want to also give capabilities to let the server shutdown itself more properly

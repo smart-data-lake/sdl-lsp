@@ -9,14 +9,15 @@ import io.smartdatalake.utils.MultiLineTransformer
 import scala.annotation.tailrec
 
 case class SDLBContext private(textContext: TextContext, parentPath: List[String], word: String) {
+  export textContext.isConfigCompleted
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
 
   def withCaretPosition(originalLine: Int, originalCol: Int): SDLBContext =
-    val TextContext(originalText, configText, config) = textContext
+    val TextContext(originalText, configText, config, _) = textContext
     if originalLine <= 0 || originalLine > originalText.count(_ == '\n') + 1 || originalCol < 0 then this else
       val (newLine, newCol) = MultiLineTransformer.computeCorrectedPosition(originalText, originalLine, originalCol)
-      val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol) //TODO idea to autogenerate placeholder value: if word == '=' or '' then we might add "???" and start again?
+      val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol)
       val (parentLine, _) = HoconParser.retrieveDirectParent(configText, newLine, newCol)
       val (parentPathInitialList, isParentListKind) = HoconParser.retrievePathList(config, parentLine)
       val oIndex = HoconParser.findIndexIfInList(configText, newLine, newCol)

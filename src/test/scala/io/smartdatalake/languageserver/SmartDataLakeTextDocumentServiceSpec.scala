@@ -2,7 +2,9 @@ package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
-import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position, TextDocumentIdentifier, TextDocumentItem}
+import io.smartdatalake.client.ClientType
+import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position,
+  TextDocumentIdentifier, TextDocumentItem, InsertTextMode}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
   
@@ -22,7 +24,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     assert(completionResult.get().getLeft.size() > 0)
   }
 
-  it should "provides hovering information" in {
+  it should "provide hovering information" in {
     notifyOpenFile()
     val params = new HoverParams()
     // Careful, Position of LSP4J is 0-based
@@ -33,6 +35,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val hoverInformation = textDocumentService.hover(params)
     assert(!hoverInformation.get().getContents.getRight.getValue.isBlank)
   }
+
   private def notifyOpenFile(): Unit = {
     val didOpenTextDocumentParams: DidOpenTextDocumentParams = new DidOpenTextDocumentParams()
     val textDocumentItem: TextDocumentItem = new TextDocumentItem()

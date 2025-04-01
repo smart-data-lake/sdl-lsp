@@ -24,10 +24,4 @@ class SDLBCompletionEngineSpec extends UnitSpec {
   it should "generate completion items within a specific transformer" in {
     completionEngine.generateCompletionItems(context.withCaretPosition(7, 0)) should have size 4
   }
-  
-  it should "generate completion items after a type" in {
-    //TODO implement feature first :)
-  }
-
-
 }

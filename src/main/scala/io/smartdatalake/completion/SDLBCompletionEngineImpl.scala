@@ -29,7 +29,6 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     items.map(createCompletionItem).toList
 
   private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, depth: Int): List[CompletionItem] =
-    val indentDepth = depth + (if templateType == TemplateType.ATTRIBUTES then 0 else 1)
     templates.map { case (actionType, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)
@@ -37,7 +36,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       
       val keyName = if templateType == TemplateType.OBJECT then s"$${1:${actionType.toLowerCase}_PLACEHOLDER}" else ""
       val startObject = if templateType != TemplateType.ATTRIBUTES then "{" else ""
-      val endObject = if templateType != TemplateType.ATTRIBUTES then ("  " * (indentDepth-2)) + "}" else ""
+      val endObject = if templateType != TemplateType.ATTRIBUTES then "}" else ""
       
       // Build attribute snippets with tabstops
       val attributeSnippets = attributes.zipWithIndex.map { case (att, idx) =>
@@ -45,7 +44,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
           if att.name == "type" then actionType 
           else s"$${${idx + 2}:${att.name}}"
         
-        ("  " * indentDepth) + att.name + " = " + defaultValue
+        "  " + att.name + " = " + defaultValue
       }.mkString("\n")
       
       completionItem.setInsertText(
@@ -62,15 +61,15 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
   private def createCompletionItem(item: SchemaItem): CompletionItem =
     val completionItem = new CompletionItem()
     completionItem.setLabel(item.name)
-    completionItem.setDetail(s"${if item.required then "required" else ""} ${item.itemType.name}")
+    completionItem.setDetail(s"${if item.required then "required" else ""} ${item.itemType.name}".trim())
     
     val valuePart = 
       if Set(ItemType.OBJECT, ItemType.TYPE_VALUE).contains(item.itemType) then 
-        " " 
+        s" ${item.itemType.defaultValue}" 
       else 
-        " = ${1:" + item.itemType.defaultValue + "}"
+        s" = ${item.itemType.defaultValue}"
     
-    completionItem.setInsertText(item.name + valuePart + "$0")
+    completionItem.setInsertText(item.name + valuePart)
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
     completionItem

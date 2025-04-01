@@ -7,8 +7,8 @@ import ujson.{Arr, Obj, Str}
 import ujson.Value.Value
 
 import scala.annotation.tailrec
-private[schema] case class SchemaContext(private val globalSchema: Value, localSchema: Value):
-  private val logger = LoggerFactory.getLogger(getClass)
+import io.smartdatalake.logging.SDLBLogger
+private[schema] case class SchemaContext(private val globalSchema: Value, localSchema: Value) extends SDLBLogger:
 
   def updateByType(elementType: String): Option[SchemaContext] = update {
     localSchema.obj.get(SCHEMA_TYPE) match
@@ -17,7 +17,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementType(elementType)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
-        logger.debug("update by type with an abnormal localSchema {}. elementType={}", localSchema, elementType)
+        debug("update by type with an abnormal localSchema {}. elementType={}", localSchema, elementType)
         None
   }
   def updateByName(elementName: String): Option[SchemaContext] = update {
@@ -27,7 +27,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementName(elementName)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
-        logger.debug("update by name with an abnormal localSchema {}. elementName={}", localSchema, elementName)
+        debug("update by name with an abnormal localSchema {}. elementName={}", localSchema, elementName)
         None
   }
 
@@ -63,7 +63,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
           .getOrElse(List.empty)
         TemplateCollection(templates, TemplateType.ARRAY_ELEMENT)
       case Some(Str(primitive)) =>
-        logger.debug("Abnormal localSchema {}", primitive)
+        debug("Abnormal localSchema {}", primitive)
         AttributeCollection(Iterable.empty[SchemaItem])
       case _ =>
         val templates = asObject.get(ONE_OF)
@@ -116,7 +116,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(path)) => goToSchemaDefinition(path).flatMap(flattenRef)
       case _ => Some(schema)
     case _ =>
-      logger.debug("abnormal schema when flattening at the end: {}", schema)
+      debug("abnormal schema when flattening at the end: {}", schema)
       None
   private def handleNoSchemaType(elementType: String): Option[Value] =
     localSchema.obj.get(ONE_OF).flatMap(findElementTypeWithOneOf(_, elementType))
@@ -133,10 +133,10 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       path match
         case Some(Str(path)) => goToSchemaDefinition(path)
         case _ =>
-          logger.debug("no path found with elementType={} in oneOf={}", elementType, oneOf)
+          debug("no path found with elementType={} in oneOf={}", elementType, oneOf)
           None
     case _ =>
-      logger.warn("Attempt to find element type with oneOf, but it is not an array: {}", oneOf)
+      warn("Attempt to find element type with oneOf, but it is not an array: {}", oneOf)
       None
   private def handleObjectSchemaTypeWithElementType(elementType: String): Option[Value] =
     localSchema.obj.get(ADDITIONAL_PROPERTIES)
@@ -157,7 +157,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
         .flatMap(_.obj.get(PROPERTIES))
         .flatMap(_.obj.get(elementName))
       case Some(Str(SCHEMA_ARRAY)) =>
-        logger.warn("request to handle Array Schema with element type array itself {}", localSchema)
+        warn("request to handle Array Schema with element type array itself {}", localSchema)
         None
       case _ => None // This can be a common case, when trying to move with "byName" even though a type in the config is defined
 

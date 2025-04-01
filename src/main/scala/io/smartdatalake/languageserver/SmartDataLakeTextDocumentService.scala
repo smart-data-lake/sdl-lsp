@@ -24,12 +24,16 @@ import java.util.concurrent.CompletableFuture
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 import scala.util.Using
+import io.smartdatalake.logging.SDLBLogger
+import io.smartdatalake.formatting.{FormattingStrategy, FormattingStrategyFactory}
+import org.eclipse.lsp4j.CompletionTriggerKind
 
 class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine)(using ExecutionContext)
-      extends TextDocumentService with ClientAware {
+      extends TextDocumentService with ClientAware with SDLBLogger {
 
   private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
+  private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
     import ClientType.*
@@ -37,16 +41,9 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
       val context = uriToContextMap(params.getTextDocument.getUri)
       val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems: List[CompletionItem] = completionEngine.generateCompletionItems(caretContext)
-      val completionItemsClientAware = completionItems.map { item => clientType match
-        case IntelliJ =>
-          item.setInsertTextMode(InsertTextMode.AsIs)
-          item
-        case VSCode | Unknown => 
-          item.setInsertTextMode(InsertTextMode.AdjustIndentation)
-          item
-      }
+      val formattedCompletionItems = completionItems.map(formattingStrategy.formatCompletionItem(_, caretContext, params))
       
-      Left(completionItemsClientAware.toJava).toJava
+      Left(formattedCompletionItems.toJava).toJava
     }.toJava
 
   }
@@ -68,7 +65,7 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = uriToContextMap -= didCloseTextDocumentParams.getTextDocument.getUri
 
-  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = ???
+  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = return
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = ???
 
@@ -77,27 +74,52 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
       val context = uriToContextMap(params.getTextDocument.getUri)
       val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
       val logger = LoggerFactory.getLogger(getClass)
-      logger.trace("Attempt to hover with hoverContext={}", hoverContext)
+      trace(s"Attempt to hover with hoverContext=$hoverContext")
       hoverEngine.generateHoveringInformation(hoverContext)
     }.toJava
   }
 
   override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)
 
+  /**
+    * To be used to navigate to the definition of a field
+    *
+    * @param params
+    * @return
+    */
   override def definition(params: DefinitionParams): CompletableFuture[messages.Either[util.List[_ <: Location], util.List[_ <: LocationLink]]] = super.definition(params)
 
+  /**
+    * 
+    * To be used to navigate to the reference of a field: the other way around than definition
+    *
+    * @param referenceParams
+    * @return
+    */
   override def references(referenceParams: ReferenceParams): CompletableFuture[util.List[_ <: Location]] = ???
 
   override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[util.List[_ <: DocumentHighlight]] = super.documentHighlight(params)
 
   override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[messages.Either[SymbolInformation, DocumentSymbol]]] = super.documentSymbol(params)
 
+  /**
+    * To be used to suggest missing required fields for example
+    *
+    * @param params
+    * @return
+    */
   override def codeAction(params: CodeActionParams): CompletableFuture[util.List[messages.Either[Command, CodeAction]]] = super.codeAction(params)
 
   override def codeLens(codeLensParams: CodeLensParams): CompletableFuture[util.List[_ <: CodeLens]] = ???
 
   override def resolveCodeLens(codeLens: CodeLens): CompletableFuture[CodeLens] = ???
 
+  /**
+    * To be used to format the document and to retrieve the tab size
+    *
+    * @param documentFormattingParams
+    * @return
+    */
   override def formatting(documentFormattingParams: DocumentFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
 
   override def rangeFormatting(documentRangeFormattingParams: DocumentRangeFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
