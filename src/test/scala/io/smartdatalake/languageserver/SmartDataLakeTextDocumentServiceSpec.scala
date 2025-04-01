@@ -36,19 +36,6 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     assert(!hoverInformation.get().getContents.getRight.getValue.isBlank)
   }
 
-  private def checkInsertTextMode(clientType: ClientType, insertTextMode: InsertTextMode): Unit = {
-    notifyOpenFile()
-    val oldClient = textDocumentService.clientType
-    textDocumentService.clientType = clientType
-    val completionResult = textDocumentService.completion(params)
-    assert(completionResult.get.isLeft)
-    val completionItems = completionResult.get().getLeft
-    assert(completionItems.size() > 0)
-    val firstItem = completionItems.get(0)
-    assert(firstItem.getInsertTextMode == insertTextMode)
-    textDocumentService.clientType = oldClient
-  }
-
   private def notifyOpenFile(): Unit = {
     val didOpenTextDocumentParams: DidOpenTextDocumentParams = new DidOpenTextDocumentParams()
     val textDocumentItem: TextDocumentItem = new TextDocumentItem()
