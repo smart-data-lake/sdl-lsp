@@ -50,7 +50,7 @@ class AICompletionEngineImpl(modelClient: ModelClient)(using ExecutionContext) e
                          .replace("$insertText", insertText)
                          .replace("$parentPath", parentpath)
                          .replace("$contextText", context)
-                         .take(8_000)
+                         .take(80_000)
     
     trace("calling Gemini client asynchronously...")
     val jsonResponse: Future[String] = modelClient.completeAsync(promptText)

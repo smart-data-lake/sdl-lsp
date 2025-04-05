@@ -66,9 +66,7 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
                     .generateInsertTextWithTabStops(item.getInsertText, data.parentPath, data.context)
                     .recover {
                       case ex: Exception =>
-                        //TODO move more globally and test it out
-                        val messageKeyAnonymized = ex.getMessage.replaceAll("(?<=key=)[A-Za-z0-9_-]+", "REDACTED")
-                        debug(s"AI inference error: ${messageKeyAnonymized}")
+                        debug(s"AI inference error: ${ex.getMessage}")
                         item.getInsertText // Fallback to original text
                     }
       precomputedCompletions += (item.getInsertText -> result)

@@ -17,7 +17,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementType(elementType)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
-        debug("update by type with an abnormal localSchema {}. elementType={}", localSchema, elementType)
+        debug(s"update by type with an abnormal localSchema=$localSchema. elementType=$elementType")
         None
   }
   def updateByName(elementName: String): Option[SchemaContext] = update {
@@ -27,7 +27,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementName(elementName)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
-        debug("update by name with an abnormal localSchema {}. elementName={}", localSchema, elementName)
+        debug(s"update by name with an abnormal localSchema=$localSchema. elementName=$elementName")
         None
   }
 
@@ -63,7 +63,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
           .getOrElse(List.empty)
         TemplateCollection(templates, TemplateType.ARRAY_ELEMENT)
       case Some(Str(primitive)) =>
-        debug("Abnormal localSchema {}", primitive)
+        debug(s"Abnormal localSchema $primitive")
         AttributeCollection(Iterable.empty[SchemaItem])
       case _ =>
         val templates = asObject.get(ONE_OF)
@@ -116,7 +116,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case Some(Str(path)) => goToSchemaDefinition(path).flatMap(flattenRef)
       case _ => Some(schema)
     case _ =>
-      debug("abnormal schema when flattening at the end: {}", schema)
+      debug(s"abnormal schema when flattening at the end: $schema")
       None
   private def handleNoSchemaType(elementType: String): Option[Value] =
     localSchema.obj.get(ONE_OF).flatMap(findElementTypeWithOneOf(_, elementType))
@@ -133,10 +133,10 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       path match
         case Some(Str(path)) => goToSchemaDefinition(path)
         case _ =>
-          debug("no path found with elementType={} in oneOf={}", elementType, oneOf)
+          debug(s"no path found with elementType=$elementType in oneOf=$oneOf")
           None
     case _ =>
-      warn("Attempt to find element type with oneOf, but it is not an array: {}", oneOf)
+      warn(s"Attempt to find element type with oneOf, but it is not an array: $oneOf")
       None
   private def handleObjectSchemaTypeWithElementType(elementType: String): Option[Value] =
     localSchema.obj.get(ADDITIONAL_PROPERTIES)
@@ -157,7 +157,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
         .flatMap(_.obj.get(PROPERTIES))
         .flatMap(_.obj.get(elementName))
       case Some(Str(SCHEMA_ARRAY)) =>
-        warn("request to handle Array Schema with element type array itself {}", localSchema)
+        warn(s"request to handle Array Schema with element type array itself $localSchema")
         None
       case _ => None // This can be a common case, when trying to move with "byName" even though a type in the config is defined
 
