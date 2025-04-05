@@ -27,6 +27,6 @@ object ItemType extends SDLBLogger:
     case "object" => ItemType.OBJECT
     case "array" => ItemType.ARRAY
     case _ => 
-      warn("Attempt to translate unknown type: {}", name)
+      warn(s"Attempt to translate unknown type: $name")
       ItemType.STRING
       

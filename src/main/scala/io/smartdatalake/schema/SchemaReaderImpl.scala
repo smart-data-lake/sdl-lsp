@@ -35,7 +35,7 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
         debug("No schema could be retrieved")
         ""
       case Some(schemaContext) =>
-        debug("Schema retrieved: {}", schemaContext.toString.take(300))
+        debug(s"Schema retrieved: ${schemaContext.toString.take(300)}")
         schemaContext.getDescription
 
   /**
@@ -73,10 +73,10 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
     val path = if withWordInPath then context.parentPath.appended(context.word) else context.parentPath
     val oInitialSchemaContext: Option[SchemaContext] = Some(createGlobalSchemaContext)
     val rootConfigValue: ConfigValue = context.textContext.rootConfig.root()
-    debug("path = {}", path)
+    debug(s"path = $path")
     path.foldLeft((oInitialSchemaContext, rootConfigValue)){(scCv, elementPath) =>
       val (newConfigValue, oTypeObject) = moveInConfigAndRetrieveType(scCv._2, elementPath)
-      if (newConfigValue == null) {warn("Error, newConfig is null with pathElement={} and fullPath={}", elementPath, path)}
+      if (newConfigValue == null) {warn(s"Error, newConfig is null with pathElement=$elementPath and fullPath=$path")}
       val newSchemaContext = oTypeObject match
         case Some(objectType) =>
           val tryUpdateByName = scCv._1.flatMap(_.updateByName(elementPath))
@@ -90,11 +90,11 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
     val newConfig = config match
       case asConfigObject: ConfigObject => asConfigObject.get(path)
       case asConfigList: ConfigList => path.toIntOption.map(asConfigList.get).getOrElse {
-        debug("Trying to access an index in config {} but given element path is not of type int: {}", config, path)
+        debug(s"Trying to access an index in config $config but given element path is not of type int: $path")
         config
       }
       case _ =>
-        debug("Trying to move with config {} while receiving path element {}", config, path)
+        debug(s"Trying to move with config $config while receiving path element $path")
         config
 
     val objectType = retrieveType(newConfig)

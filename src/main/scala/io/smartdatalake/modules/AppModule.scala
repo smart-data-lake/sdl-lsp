@@ -11,6 +11,8 @@ import org.eclipse.lsp4j.services.{LanguageClientAware, LanguageServer, TextDocu
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.ExecutionContext.Implicits.global
+import io.smartdatalake.completion.ai.model.{ModelClient, GeminiClient}
+import io.smartdatalake.completion.ai.{AICompletionEngine, AICompletionEngineImpl}
 
 trait AppModule {
   lazy val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json")
@@ -20,7 +22,12 @@ trait AppModule {
   lazy val executorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val executionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(executorService)
   lazy given ExecutionContext = executionContext
-  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine)
+
+  // AI Completion: Prefers colder start over slow first completion response
+  val modelClient: ModelClient = new GeminiClient(Option(System.getenv("GOOGLE_API_KEY")))
+  val aiCompletionEngine: AICompletionEngine = new AICompletionEngineImpl(modelClient)
+
+  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
   lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService)
 

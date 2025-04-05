@@ -17,6 +17,7 @@ class SmartDataLakeLanguageServer(private val textDocumentService: TextDocumentS
     val initializeResult = InitializeResult(ServerCapabilities())
     initializeResult.getCapabilities.setTextDocumentSync(TextDocumentSyncKind.Full)
     val completionOptions = CompletionOptions()
+    completionOptions.setResolveProvider(true)
     initializeResult.getCapabilities.setCompletionProvider(completionOptions)
 
     initializeResult.getCapabilities.setHoverProvider(true)
