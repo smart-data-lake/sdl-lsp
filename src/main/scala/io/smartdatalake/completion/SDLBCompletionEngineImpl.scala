@@ -9,13 +9,15 @@ import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, InsertTextFormat}
 
 import scala.util.{Failure, Success, Try}
+import io.smartdatalake.logging.SDLBLogger
 
-class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private val contextAdvisor: ContextAdvisor) extends SDLBCompletionEngine {
+class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private val contextAdvisor: ContextAdvisor)
+  extends SDLBCompletionEngine with SDLBLogger {
   
   override def generateCompletionItems(context: SDLBContext): List[CompletionItem] =
     val itemSuggestionsFromSchema = schemaReader.retrieveAttributeOrTemplateCollection(context) match
       case AttributeCollection(attributes) => generateAttributeSuggestions(attributes, context.getParentContext)
-      case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType, context.parentPath.size)
+      case TemplateCollection(templates, templateType) => generateTemplateSuggestions(templates, templateType, context)
 
     val itemSuggestionsFromConfigContextSuggestions = contextAdvisor.generateSuggestions(context)
     val itemSuggestionsFromConfig = itemSuggestionsFromConfigContextSuggestions.map(createCompletionItem)
@@ -28,7 +30,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       case _ => attributes
     items.map(createCompletionItem).toList
 
-  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, depth: Int): List[CompletionItem] =
+  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, context: SDLBContext): List[CompletionItem] =
     templates.map { case (actionType, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)
@@ -55,6 +57,13 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       
       completionItem.setKind(CompletionItemKind.Snippet)
       completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
+      if completionItem.getInsertText.contains("${1:") then
+        val data = CompletionData(
+          withTabStops = true,
+          parentPath = context.parentPath.mkString("->"),
+          context = context.textContext.rootConfig.root().toString
+        )
+        completionItem.setData(data.toJson)
       completionItem
     }.toList
 

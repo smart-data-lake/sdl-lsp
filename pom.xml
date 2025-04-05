@@ -72,10 +72,46 @@
       <version>${typesafe.config.version}</version>
     </dependency>
 
+    <!-- Scala JSON parser -->
     <dependency>
       <groupId>com.lihaoyi</groupId>
       <artifactId>ujson_3</artifactId>
       <version>${ujson.version}</version>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/io.circe/circe-core -->
+    <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-core_3</artifactId>
+        <version>0.15.0-M1</version>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/io.circe/circe-parser -->
+    <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-parser_3</artifactId>
+        <version>0.15.0-M1</version>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/io.circe/circe-generic -->
+    <dependency>
+        <groupId>io.circe</groupId>
+        <artifactId>circe-generic_3</artifactId>
+        <version>0.15.0-M1</version>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/com.softwaremill.sttp.client3/core -->
+    <dependency>
+        <groupId>com.softwaremill.sttp.client3</groupId>
+        <artifactId>core_3</artifactId>
+        <version>3.10.3</version>
+    </dependency>
+
+    <!-- https://mvnrepository.com/artifact/com.softwaremill.sttp.client3/circe -->
+    <dependency>
+        <groupId>com.softwaremill.sttp.client3</groupId>
+        <artifactId>circe_3</artifactId>
+        <version>3.10.3</version>
     </dependency>
 
     <!-- Logging -->
@@ -121,6 +157,11 @@
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
         <version>4.5.4</version>
+        <configuration>
+          <args>
+            <arg>-deprecation</arg>
+          </args>
+        </configuration>
         <executions>
           <execution>
             <goals>

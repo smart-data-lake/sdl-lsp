@@ -16,7 +16,7 @@ class IntelliJFormattingStrategy extends FormattingStrategy:
         case (_, _) =>
             val currentChar = arrayText(line).charAt(column - 1)
             if currentChar == ' ' || currentChar == '\t' then
-            takePrecedingBlankChars(line, column - 1,  currentChar + blankChars)
+            takePrecedingBlankChars(line, column - 1,  currentChar.toString + blankChars)
             else
             (blankChars, currentChar)
     
