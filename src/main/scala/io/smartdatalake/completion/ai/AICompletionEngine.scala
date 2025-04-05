@@ -1,7 +1,6 @@
 package io.smartdatalake.completion.ai
 
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
-import io.smartdatalake.completion.ai.model.GeminiClient
 
 import io.circe.*
 import io.circe.generic.auto.*
@@ -11,13 +10,16 @@ import io.smartdatalake.logging.SDLBLogger
 import scala.util.Try
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import io.smartdatalake.completion.ai.model.ModelClient
 
+trait AICompletionEngine:
+  def isEnabled: Boolean
+  def generateInsertTextWithTabStops(insertText: String, parentpath: String, context: String): Future[String]
 
-class AICompletionEngine(using ExecutionContext) extends SDLBLogger:
+class AICompletionEngineImpl(modelClient: ModelClient)(using ExecutionContext) extends AICompletionEngine with SDLBLogger:
 
   private case class TabStopReplacement(tab_stop_number: Int, new_value: String)
-  private val geminiClient = GeminiClient()
-  export geminiClient.isEnabled
+  export modelClient.isEnabled
 
   def generateInsertTextWithTabStops(insertText: String, parentpath: String, context: String): Future[String] =
     val promptText = 
@@ -51,7 +53,7 @@ class AICompletionEngine(using ExecutionContext) extends SDLBLogger:
                          .take(8_000)
     
     trace("calling Gemini client asynchronously...")
-    val jsonResponse: Future[String] = geminiClient.completeAsync(promptText)
+    val jsonResponse: Future[String] = modelClient.completeAsync(promptText)
     jsonResponse.map { jsonResponse =>
       applyTabStopReplacements(insertText, jsonResponse)
     }.recover {
@@ -60,7 +62,7 @@ class AICompletionEngine(using ExecutionContext) extends SDLBLogger:
         insertText
     }
     
-  private def applyTabStopReplacements(insertText: String, jsonResponse: String): String =
+  private[ai] def applyTabStopReplacements(insertText: String, jsonResponse: String): String =
     def processReplacements(replacements: List[TabStopReplacement]): String =
       // Sort by tab stop number in descending order to avoid offset issues when replacing
       val sortedReplacements = replacements.sortBy(-_.tab_stop_number)

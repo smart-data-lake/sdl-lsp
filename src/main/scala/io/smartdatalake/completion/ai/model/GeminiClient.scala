@@ -43,12 +43,11 @@ private object GeminiModels:
   case class CitationMetadata(citationSources: List[CitationSource])
   case class CitationSource(startIndex: Int, endIndex: Int, uri: String)
 
-private[ai] class GeminiClient(defaultModel: String = "gemini-2.0-flash-lite")(using ExecutionContext) extends SDLBLogger:
+class GeminiClient(apiKey: Option[String], defaultModel: String = "gemini-2.0-flash-lite")(using ExecutionContext) extends ModelClient with SDLBLogger:
   import GeminiModels.*
   
   private val backend = HttpClientFutureBackend()
   private val baseUrl = "https://generativelanguage.googleapis.com/v1beta/models"
-  private val apiKey: Option[String] = Option(System.getenv("GOOGLE_API_KEY"))
   trace(s"Gemini API Key: ${if apiKey.isDefined then "correctly set" else "not set"}")
 
   def isEnabled: Boolean = apiKey.isDefined

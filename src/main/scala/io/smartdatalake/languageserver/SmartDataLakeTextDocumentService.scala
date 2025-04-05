@@ -35,13 +35,13 @@ import scala.collection.concurrent.TrieMap
 import scala.util.Try
 
 class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine,
-      private val hoverEngine: SDLBHoverEngine)(using ExecutionContext)
+      private val hoverEngine: SDLBHoverEngine,
+      private val aiCompletionEngine: AICompletionEngine)(using ExecutionContext)
       extends TextDocumentService with ClientAware with SDLBLogger {
 
   private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
   private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
   private val precomputedCompletions: TrieMap[String, Future[String]] = TrieMap.empty
-  private val aiCompletionEngine = AICompletionEngine()
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
     import ClientType.*
