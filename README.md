@@ -59,9 +59,13 @@ Work in progress, should be released soon. Stay tuned!
 
 The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define workspace behavior and AI-assisted features.
 
+**Hint:** You can generate a default template of the config file using the LSP itself. See screnshot below: ![screenshot of triggering default template of the LSP config file in LSP4IJ](resources/img/default-template-lsp-config.png)
+
 ### Workspace Configuration
 
 The workspace configuration determines how files are grouped and processed by the LSP server. This is particularly important for features like auto-completion and references that need context from multiple files.
+
+Please note that **you need to restart the LSP Server if you want to apply the changes of your LSP config file.**
 
 You can choose between four workspace types:
 
@@ -218,6 +222,8 @@ $contextText"""
 ```
 
 This prompt helps the AI understand the context of your Smart Data Lake Builder configuration and provide more relevant suggestions for code completion.
+
+Don't forget to **restart the LSP Server** if you want to apply the customized prompt.
 
 ## Authors
 

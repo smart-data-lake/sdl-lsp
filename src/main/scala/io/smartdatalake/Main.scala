@@ -71,7 +71,7 @@ object Main extends AppModule with SDLBLogger {
     try
       val launcher: Launcher[LanguageClient] = Launcher.Builder[LanguageClient]()
         .traceMessages(PrintWriter(LoggingManager.createPrintStreamWithLoggerName("jsonRpcLogger", level = Level.TRACE)))
-        .setExecutorService(executorService)
+        .setExecutorService(serviceExecutorService)
         .setInput(in)
         .setOutput(out)
         .setRemoteInterface(classOf[LanguageClient])
@@ -91,9 +91,10 @@ object Main extends AppModule with SDLBLogger {
         error(ex.toString)
 
     finally
-      // Might want to also give capabilities to let the server shutdown itself more properly
-      executionContext.shutdownNow()
-      executorService.shutdownNow()
+      serviceExecutionContext.shutdownNow()
+      serviceExecutorService.shutdownNow()
+      ioExecutionContext.shutdownNow()
+      ioExecutorService.shutdownNow()
       sys.exit(0)
   }
 }

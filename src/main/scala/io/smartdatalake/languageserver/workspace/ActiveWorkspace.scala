@@ -34,5 +34,5 @@ class ActiveWorkspace(workspacePrefixes: String) extends WorkspaceStrategy with 
         val (active, inactive) = contents.partition((uri, content) => activeWorkspacePrefixes.exists(uri.startsWith(_)))
         Map(activeWorkspaceName -> active, rootUri -> inactive)
 
-    private def mergePath(prefix: String, path: String): String =
+    private[workspace] def mergePath(prefix: String, path: String): String =
         prefix.reverse.dropWhile(_ == '/').reverse + "/" + path.dropWhile(_ == '/')

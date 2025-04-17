@@ -11,6 +11,6 @@ trait TestModule extends AppModule {
   override lazy val completionEngine: SDLBCompletionEngineImpl = new SDLBCompletionEngineImpl(schemaReader, contextAdvisor)
   override val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)
   override lazy val textDocumentService: SmartDataLakeTextDocumentService = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
-  override lazy val languageServer: SmartDataLakeLanguageServer = new SmartDataLakeLanguageServer(textDocumentService, workspaceService, configurator)(using executionContext)
+  override lazy val languageServer: SmartDataLakeLanguageServer = new SmartDataLakeLanguageServer(textDocumentService, workspaceService, configurator)(using serviceExecutionContext)
 
 }
