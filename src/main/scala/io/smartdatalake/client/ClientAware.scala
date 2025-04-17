@@ -1,5 +1,4 @@
 package io.smartdatalake.client
 
-trait ClientAware {
+trait ClientAware:
   var clientType: ClientType = ClientType.Unknown
-}

@@ -26,7 +26,9 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     
   private def generateAttributeSuggestions(attributes: Iterable[SchemaItem], parentContext: Option[ConfigValue]): List[CompletionItem] =
     val items = parentContext match
-      case Some(config: ConfigObject) => attributes.filter(item => Option(config.get(item.name)).isEmpty)
+      case Some(config: ConfigObject) => attributes
+        .filter(item => Option(config.get(item.name)).isEmpty
+        || item.name == "actions" || item.name == "dataObjects")
       case _ => attributes
     items.map(createCompletionItem).toList
 

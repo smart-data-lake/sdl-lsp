@@ -18,6 +18,14 @@ class MultiLineTransformerSpec extends UnitSpec {
     trimLines(MLT.flattenMultiLines(text)) should be (trimLines(expectedFlattenedText))
   }
 
+  it should "correctly handle special cases" in {
+    val tripleQuotes = "\"\"\""
+    val text = s"""tabStopsPrompt = ${tripleQuotes}Tab stops have the following format in the default insert text: $${number:default_value}.
+              |Use the context text to suggest better default values.${tripleQuotes}""".stripMargin
+    val expectedFlattenedText = s"""tabStopsPrompt = ${tripleQuotes}Tab stops have the following format in the default insert text: $${number:default_value}.Use the context text to suggest better default values.${tripleQuotes}"""
+    trimLines(MLT.flattenMultiLines(text)) should be (trimLines(expectedFlattenedText))
+  }
+
   it should "compute correct mapping between original positions and new positions" in {
     MLT.computeCorrectedPositions(text) should be (List((1,0), (2,0), (3,0), (4,0), (5,0), (6,0), (7,0), (8,0), (9,0), (9,112), (9,130), (10,0), (11,0), (12,0), (13,0), (14,0), (15,0), (16,0), (17,0), (17,136), (17,300), (17,421), (18,0), (19,0), (20,0), (21,0), (22,0), (23,0), (24,0)))
   }

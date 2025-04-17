@@ -4,33 +4,37 @@ import com.typesafe.config.Config
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
+import io.smartdatalake.logging.SDLBLogger
 
-case class TextContext private (originalText: String, configText: String, rootConfig: Config, isConfigCompleted: Boolean = true) {
+case class TextContext private (uri: String, originalText: String, workspaceUriToContents: Map[String, String], configText: String, rootConfig: Config, isConfigCompleted: Boolean = true) extends SDLBLogger {
 
+  def withContents(newContents: Map[String, String]): TextContext = copy(workspaceUriToContents=newContents)
+  
   def update(newText: String): TextContext = this match
-    case EMPTY_TEXT_CONTEXT => TextContext.create(newText)
+    case EMPTY_TEXT_CONTEXT => TextContext.create(uri, newText, workspaceUriToContents)
     case _ => updateContext(newText)
 
   private def updateContext(newText: String) =
     val newConfigText = MultiLineTransformer.flattenMultiLines(newText)
-    val newConfigOption = HoconParser.parse(newConfigText)
+    val fullText = (newConfigText::workspaceUriToContents.removed(uri).values.toList).mkString("\n")
+    val newConfigOption = HoconParser.parse(fullText)
     val isConfigCompleted = newConfigOption.isDefined
     val newConfig = newConfigOption.getOrElse(HoconParser.EMPTY_CONFIG)
     if newConfig == HoconParser.EMPTY_CONFIG then
-      copy(originalText=newText, isConfigCompleted = isConfigCompleted)
+      copy(originalText=newText, isConfigCompleted=isConfigCompleted)
     else
-      TextContext(newText, newConfigText, newConfig, isConfigCompleted)
+      copy(originalText=newText, configText=newConfigText, rootConfig=newConfig, isConfigCompleted=isConfigCompleted)
 
-  override def toString: String = s"TextContext(originalText=${originalText.take(50)}, configText=${configText.take(50)}, rootConfig=${rootConfig.toString.take(50)})"
-
+  override def toString: String = s"TextContext(originalText=${originalText.take(50)}, configText=${configText.take(50)}, rootConfig=${rootConfig.toString})"
 
 }
 
-object TextContext {
-  val EMPTY_TEXT_CONTEXT: TextContext = new TextContext("", "", HoconParser.EMPTY_CONFIG)
+object TextContext{
+  val EMPTY_TEXT_CONTEXT: TextContext = new TextContext("", "", Map.empty, "", HoconParser.EMPTY_CONFIG)
 
-  def create(originalText: String): TextContext =
+  def create(uri: String, originalText: String, workspaceUriToContents: Map[String, String]): TextContext =
     val configText = MultiLineTransformer.flattenMultiLines(originalText)
-    val config = HoconParser.parse(configText).getOrElse(HoconParser.EMPTY_CONFIG)
-    TextContext(originalText, configText, config)
+    val fullText = (configText::workspaceUriToContents.removed(uri).values.toList).mkString("\n")
+    val config = HoconParser.parse(fullText).getOrElse(HoconParser.EMPTY_CONFIG)
+    TextContext(uri, originalText, workspaceUriToContents, configText, config)
 }

@@ -1,7 +1,6 @@
 package io.smartdatalake.client
 
-enum ClientType {
+enum ClientType:
   case VSCode
   case IntelliJ
   case Unknown
-}

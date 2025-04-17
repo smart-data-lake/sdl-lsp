@@ -26,7 +26,10 @@ trait ScalaJavaConverter {
   
   extension [L, R] (either: Either[L, R]) def toJava: messages.Either[L, R] = either match
     case Left(leftValue) => messages.Either.forLeft(leftValue)
-    case Right(rightValue) => messages.Either.forRight(rightValue) 
+    case Right(rightValue) => messages.Either.forRight(rightValue)
+
+  extension [T] (stream: java.util.stream.Stream[T]) def toScala: List[T] = stream.toList.asScala.toList
+  extension [T] (stream: java.nio.file.DirectoryStream[T]) def toScala: List[T] = stream.iterator().asScala.toList
 
 }
 

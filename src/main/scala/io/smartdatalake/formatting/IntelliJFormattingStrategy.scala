@@ -20,7 +20,8 @@ class IntelliJFormattingStrategy extends FormattingStrategy:
             else
             (blankChars, currentChar)
     
-    val (precedingBlankChars, lastNotBlankChar) = takePrecedingBlankChars(params.getPosition().getLine(), params.getPosition().getCharacter())
+    val correctedLine = Math.min(params.getPosition().getLine(), arrayText.length)
+    val (precedingBlankChars, lastNotBlankChar) = takePrecedingBlankChars(correctedLine, params.getPosition().getCharacter())
     val correctedDepth = if lastNotBlankChar == '{' || lastNotBlankChar == '[' then context.parentPath.size - 1 else context.parentPath.size
     val correctedPrefix = precedingBlankChars.replace("\n" + getIndentForDepth(correctedDepth), "\n")
     item.setInsertText(correctedPrefix + item.getInsertText)

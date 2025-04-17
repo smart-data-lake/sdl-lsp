@@ -13,8 +13,11 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.smartdatalake.completion.ai.model.{ModelClient, GeminiClient}
 import io.smartdatalake.completion.ai.{AICompletionEngine, AICompletionEngineImpl}
+import io.smartdatalake.languageserver.workspace.WorkspaceContext
+import io.smartdatalake.context.SDLBContext
+import scala.util.Try
 
-trait AppModule {
+trait AppModule:
   lazy val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json")
   lazy val contextAdvisor: ContextAdvisor = new ContextAdvisorImpl
   lazy val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl(schemaReader, contextAdvisor)
@@ -23,13 +26,16 @@ trait AppModule {
   lazy val executionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(executorService)
   lazy given ExecutionContext = executionContext
 
-  // AI Completion: Prefers colder start over slow first completion response
+  // AI Completion: Prefers colder start over slow first completion response: so no lazy val here
   val modelClient: ModelClient = new GeminiClient(Option(System.getenv("GOOGLE_API_KEY")))
-  val aiCompletionEngine: AICompletionEngine = new AICompletionEngineImpl(modelClient)
+  val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)
 
-  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
+  lazy val textDocumentService: TextDocumentService & WorkspaceContext & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
-  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService)
+  lazy val configurator: Configurator = new Configurator(aiCompletionEngine)
+  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService, configurator)
 
-}
+class Configurator(aiCompletionEngine: AICompletionEngineImpl):
+  def configureApp(lspConfig: SDLBContext): Unit =
+    aiCompletionEngine.tabStopsPrompt = Try(lspConfig.rootConfig.getString("tabStopsPrompt")).toOption
 
