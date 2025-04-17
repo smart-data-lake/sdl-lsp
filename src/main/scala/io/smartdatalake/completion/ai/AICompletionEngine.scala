@@ -18,12 +18,8 @@ trait AICompletionEngine:
 
 class AICompletionEngineImpl(modelClient: ModelClient)(using ExecutionContext) extends AICompletionEngine with SDLBLogger:
 
-  private case class TabStopReplacement(tab_stop_number: Int, new_value: String)
-  export modelClient.isEnabled
-
-  def generateInsertTextWithTabStops(insertText: String, parentpath: String, context: String): Future[String] =
-    val promptText = 
-      """You're helping a user with code completion in an IDE.
+  private val maxInsertTextLength = 80_000
+  private val defaultTabStopsPrompt = """You're helping a user with code completion in an IDE.
          |The user's current file is about a Smart Data Lake Builder configuration, where the "dataObjects" block provides all the data sources
          |and the "actions" block usually defines a transformation from one or more data sources to another.
          |Extract a list of suggested tab stops default values.
@@ -46,11 +42,19 @@ class AICompletionEngineImpl(modelClient: ModelClient)(using ExecutionContext) e
          |$parentPath
          |
          |Context text, HOCON format, the user's current file:
-         |$contextText""".stripMargin
+         |$contextText"""
+  
+  var tabStopsPrompt: Option[String] = None
+
+  private case class TabStopReplacement(tab_stop_number: Int, new_value: String)
+  export modelClient.isEnabled
+
+  def generateInsertTextWithTabStops(insertText: String, parentpath: String, context: String): Future[String] =
+    val promptText = tabStopsPrompt.getOrElse(defaultTabStopsPrompt).stripMargin
                          .replace("$insertText", insertText)
                          .replace("$parentPath", parentpath)
                          .replace("$contextText", context)
-                         .take(80_000)
+                         .take(maxInsertTextLength)
     
     trace("calling Gemini client asynchronously...")
     val jsonResponse: Future[String] = modelClient.completeAsync(promptText)

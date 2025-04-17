@@ -5,8 +5,23 @@ import scala.annotation.tailrec
 object MultiLineTransformer {
 
   def flattenMultiLines(text: String): String =
+    // Step 1: Sanitize the special regex replacement characters
+    val sanitizedText = text.replace("{", "§§OPEN_BRACE§§").replace("}", "§§CLOSE_BRACE§§").replace("$", "§§DOLLAR§§")
+    
+    // Step 2: Apply the regex pattern to the sanitized text
     val pattern = raw"""(?s)\"\"\".*?\"\"\"""".r
-    pattern.replaceAllIn(text, m => m.matched.replace("\n", ""))
+    val processedText = pattern.replaceAllIn(sanitizedText, m => {
+      val content = m.matched
+      content.replace("\n", "")
+    })
+    
+    // Step 3: Restore the original special characters
+    val restoredText = processedText
+      .replace("§§OPEN_BRACE§§", "{")
+      .replace("§§CLOSE_BRACE§§", "}")
+      .replace("§§DOLLAR§§", "$")
+      
+    restoredText
 
 
   def computeCorrectedPosition(text: String, lineNumber: Int, columnNumber: Int): (Int, Int) =

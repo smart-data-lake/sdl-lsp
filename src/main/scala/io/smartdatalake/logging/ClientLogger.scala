@@ -9,6 +9,7 @@ import org.eclipse.lsp4j.services.LanguageClient
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import scala.util.Try
 
 object ClientLogger:
     var lspClient: Option[LanguageClient] = None
@@ -35,7 +36,7 @@ class ClientLogger extends AppenderBase[ILoggingEvent]:
     override def append(event: ILoggingEvent): Unit =
         if event.getLoggerName != "jsonRpcLogger" then
             ClientLogger.lspClient.foreach { client =>
-                try
+                Try {
                     // Get the properly formatted message with timestamp, level, etc.
                     val formattedMessage = layout.doLayout(event)
                     
@@ -48,7 +49,8 @@ class ClientLogger extends AppenderBase[ILoggingEvent]:
                     
                     // Send to the client
                     client.logMessage(new MessageParams(messageType, formattedMessage.trim))
-                catch
+                }.recover {
                     case ex: Exception =>
                         System.err.println(s"Error sending log to LSP client: ${ex.getMessage}")
+                }
             }

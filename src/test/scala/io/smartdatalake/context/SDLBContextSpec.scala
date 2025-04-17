@@ -47,7 +47,7 @@ class SDLBContextSpec extends UnitSpec {
     line3Start.word shouldBe ""
 
     val line3End = SDLBContext.fromText(basicText).withCaretPosition(3, 999)
-    line3End.parentPath shouldBe List("global", "spark-options", "spark.sql.shuffle.partitions")
+    line3End.parentPath shouldBe List("global", "spark-options", "\"spark.sql.shuffle.partitions\"")
     line3End.word shouldBe "2"
 
     val line5Start = SDLBContext.fromText(basicText).withCaretPosition(5, 0)

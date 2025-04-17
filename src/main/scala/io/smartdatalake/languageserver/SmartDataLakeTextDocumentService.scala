@@ -33,20 +33,24 @@ import io.smartdatalake.completion.ai.AICompletionEngine
 import io.smartdatalake.completion.CompletionData
 import scala.collection.concurrent.TrieMap
 import scala.util.Try
+import workspace.WorkspaceContext
 
-class SmartDataLakeTextDocumentService(private val completionEngine: SDLBCompletionEngine,
+class SmartDataLakeTextDocumentService(
+      private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine,
       private val aiCompletionEngine: AICompletionEngine)(using ExecutionContext)
-      extends TextDocumentService with ClientAware with SDLBLogger {
+      extends TextDocumentService
+      with WorkspaceContext with ClientAware with SDLBLogger {
 
-  private var uriToContextMap: Map[String, SDLBContext] = Map("" -> SDLBContext.EMPTY_CONTEXT)
   private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
   private val precomputedCompletions: TrieMap[String, Future[String]] = TrieMap.empty
 
-  override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
-    import ClientType.*
-    Future {
-      val context = uriToContextMap(params.getTextDocument.getUri)
+  override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = Future {
+    val uri = params.getTextDocument.getUri
+    if isLSPConfigUri(uri) then
+      Left(generateLSPConfigCompletions(params.getPosition.getLine).toJava).toJava
+    else
+      val context = getContext(uri)
       val caretContext = context.withCaretPosition(params.getPosition.getLine+1, params.getPosition.getCharacter)
       val completionItems: List[CompletionItem] = completionEngine.generateCompletionItems(caretContext)
       val formattedCompletionItems = completionItems.map(formattingStrategy.formatCompletionItem(_, caretContext, params))
@@ -56,41 +60,54 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
         formattedCompletionItems.take(3).foreach(generateAICompletions)
       
       Left(formattedCompletionItems.toJava).toJava
-    }.toJava
+  }.toJava
 
-  }
+  private def generateLSPConfigCompletions(line: Int): List[CompletionItem] =
+    if line <= 1 then
+      val text = defaultLSPConfigText.getOrElse("")
+      val completionItem = new CompletionItem()
+      completionItem.setLabel("Default Template")
+      completionItem.setDetail("Default Template")
+      completionItem.setInsertText(text)
+      completionItem.setKind(CompletionItemKind.Snippet)
+      List(completionItem)
+    else
+      List.empty[CompletionItem]
+
 
   private def generateAICompletions(item: CompletionItem): Unit =
     Option(item.getData).map(_.toString).flatMap(CompletionData.fromJson).filter(_.withTabStops).foreach { data =>
       val result = aiCompletionEngine
-                    .generateInsertTextWithTabStops(item.getInsertText, data.parentPath, data.context)
-                    .recover {
-                      case ex: Exception =>
-                        debug(s"AI inference error: ${ex.getMessage}")
-                        item.getInsertText // Fallback to original text
-                    }
+        .generateInsertTextWithTabStops(item.getInsertText, data.parentPath, data.context)
+        .recover {
+          case ex: Exception =>
+            debug(s"AI inference error: ${ex.getMessage}")
+            item.getInsertText // Fallback to original text
+        }
       precomputedCompletions += (item.getInsertText -> result)
     }
 
 
   override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
-    uriToContextMap += (didOpenTextDocumentParams.getTextDocument.getUri, SDLBContext.fromText(didOpenTextDocumentParams.getTextDocument.getText))
+    val uri = didOpenTextDocumentParams.getTextDocument.getUri
+    val content = didOpenTextDocumentParams.getTextDocument.getText
+    insert(uri, content)
+    updateWorkspace(uri)
 
   override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit =
     val contentChanges = didChangeTextDocumentParams.getContentChanges
-    val context = uriToContextMap(didChangeTextDocumentParams.getTextDocument.getUri)
-    val newContext =
-      if contentChanges != null && contentChanges.size() > 0 then
-        // Update the stored document content with the new content. Assuming Full sync technique
-        context.withText(contentChanges.get(0).getText)
-      else
-        context
-    uriToContextMap += (didChangeTextDocumentParams.getTextDocument.getUri, newContext)
+    update(didChangeTextDocumentParams.getTextDocument.getUri, Option(contentChanges).flatMap(_.toScala.headOption).map(_.getText).getOrElse(""))
 
 
-  override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit = uriToContextMap -= didCloseTextDocumentParams.getTextDocument.getUri
+  override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit =
+    val uri = didCloseTextDocumentParams.getTextDocument.getUri
+    if isUriDeleted(uri) then
+      info(s"Detecting deletion of $uri")
+      update(uri, "")
+    updateWorkspace(uri)
 
-  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = return
+  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit =
+    updateWorkspace(didSaveTextDocumentParams.getTextDocument.getUri)
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = Future {
     if aiCompletionEngine.isEnabled then
@@ -99,12 +116,12 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
         if data.withTabStops then
           precomputedCompletions.get(completionItem.getInsertText) match
             case Some(future) =>
-              try {
+              Try {
                 // Try to get result with timeout
                 val result = Await.result(future, 3000.milliseconds)
                 completionItem.setInsertText(result)
                 completionItem.setInsertTextMode(InsertTextMode.AdjustIndentation)
-              } catch {
+              }.recover {
                 case _: java.util.concurrent.TimeoutException =>
                   // If timeout, don't modify the insert text - use default
                   debug("AI completion inference timeout, using default completion")
@@ -124,7 +141,7 @@ class SmartDataLakeTextDocumentService(private val completionEngine: SDLBComplet
 
   override def hover(params: HoverParams): CompletableFuture[Hover] = {
     Future {
-      val context = uriToContextMap(params.getTextDocument.getUri)
+      val context = getContext(params.getTextDocument.getUri)
       val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
       trace(s"Attempt to hover with hoverContext=$hoverContext")
       hoverEngine.generateHoveringInformation(hoverContext)

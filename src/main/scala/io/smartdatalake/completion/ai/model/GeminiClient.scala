@@ -80,8 +80,7 @@ class GeminiClient(apiKey: Option[String], defaultModel: String = "gemini-2.0-fl
             case Left(error) =>
               warn(s"API error: ${error.toString}")
               ""
-        }
-        .recover {
+        }.recover {
           case e: Exception =>
             warn(s"Request failed: ${e.getMessage}")
             ""

@@ -23,16 +23,21 @@ trait SDLBLogger:
             
 
     def trace(message: => String, anonymize: Boolean = true): Unit =
-        logger.trace(anonymizeMessage(message, anonymize))
+        if logger.isTraceEnabled then
+            logger.trace(anonymizeMessage(message, anonymize))
 
     def debug(message: => String, anonymize: Boolean = true): Unit =
-        logger.debug(anonymizeMessage(message, anonymize))
+        if logger.isDebugEnabled then
+            logger.debug(anonymizeMessage(message, anonymize))
 
     def info(message: => String, anonymize: Boolean = true): Unit =
-        logger.info(anonymizeMessage(message, anonymize))
+        if logger.isInfoEnabled then
+            logger.info(anonymizeMessage(message, anonymize))
     
     def warn(message: => String, anonymize: Boolean = true): Unit =
-        logger.warn(anonymizeMessage(message, anonymize))
+        if logger.isWarnEnabled then
+            logger.warn(anonymizeMessage(message, anonymize))
     
     def error(message: => String, anonymize: Boolean = true): Unit =
-        logger.error(anonymizeMessage(message, anonymize))
+        if logger.isErrorEnabled then
+            logger.error(anonymizeMessage(message, anonymize))

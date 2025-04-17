@@ -55,6 +55,170 @@ To be able to build an executable jar with this project, you will need:
 
 Work in progress, should be released soon. Stay tuned!
 
+## LSP Server Configuration
+
+The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define workspace behavior and AI-assisted features.
+
+### Workspace Configuration
+
+The workspace configuration determines how files are grouped and processed by the LSP server. This is particularly important for features like auto-completion and references that need context from multiple files.
+
+You can choose between four workspace types:
+
+#### 1. RootWorkspace
+
+Creates a new workspace for each direct subfolder of a specified root folder, plus the root folder itself and the root URI.
+
+```hocon
+workspaceType = RootWorkspace
+workspaceParameters = "conf"
+```
+
+**Example structure:**
+
+```plaintext
+project/
+├── .sdlb/
+│   └── lsp-config.conf
+├── conf/               # Root folder specified in parameters
+│   ├── pipeline1/      # Workspace 1
+│   │   ├── extract.conf
+│   │   └── transform.conf
+│   ├── pipeline2/      # Workspace 2
+│   │   ├── extract.conf
+│   │   └── load.conf
+│   └── common.conf     # Part of root workspace
+└── other/
+    └── files.txt
+```
+
+In this example:
+
+* The `pipeline1` folder and its files form a workspace
+* The `pipeline2` folder and its files form another workspace
+* The `common.conf` file is in its own workspace
+* Files outside the `conf` folder are not included in these workspaces
+
+#### 2. ActiveWorkspace
+
+Creates two workspaces: one "active" workspace containing all files in specified paths, and another workspace for all other files.
+
+```hocon
+workspaceType = ActiveWorkspace
+workspaceParameters = "conf/local,conf/airport.conf,conf/trainstation.conf"
+```
+
+**Example structure:**
+
+```plaintext
+project/
+├── .sdlb/
+│   └── lsp-config.conf
+└── conf/
+    ├── local/          # Part of active workspace
+    │   ├── dev.conf
+    │   └── test.conf
+    ├── prod/           # Not in active workspace
+    │   └── prod.conf
+    ├── airport.conf    # Part of active workspace
+    ├── trainstation.conf # Part of active workspace
+    └── mall.conf       # Not in active workspace
+```
+
+In this example:
+
+* The active workspace contains `conf/local/dev.conf`, `conf/local/test.conf`, `conf/airport.conf`, and `conf/trainstation.conf`
+* All other files are in a separate workspace
+
+#### 3. SingleWorkspace
+
+All files are included in a single workspace.
+
+```hocon
+workspaceType = SingleWorkspace
+```
+
+**Example structure:**
+
+```plaintext
+project/
+├── .sdlb/
+│   └── lsp-config.conf
+└── conf/
+    ├── pipeline1/
+    │   └── extract.conf
+    ├── pipeline2/
+    │   └── load.conf
+    └── common.conf
+```
+
+In this example, all `.conf` files are in a single workspace, regardless of their location.
+
+#### 4. NoWorkspace
+
+Each file is treated as its own isolated workspace.
+
+```hocon
+workspaceType = NoWorkspace
+```
+
+**Example structure:**
+
+```plaintext
+project/
+├── .sdlb/
+│   └── lsp-config.conf
+└── conf/
+    ├── pipeline1/
+    │   └── extract.conf  # Isolated workspace
+    ├── pipeline2/
+    │   └── load.conf     # Isolated workspace
+    └── common.conf       # Isolated workspace
+```
+
+In this example, each file is in its own workspace and has no awareness of other files.
+
+### AI-Assisted Features
+
+The SDL LSP server includes AI-assisted features to improve code completion and suggestions. To use these features:
+
+1. Obtain a Google API key from [Google AI Studio](https://aistudio.google.com)
+2. Configure your LSP client to include the environment variable `GOOGLE_API_KEY` with your API key. See screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
+3. Optionally customize the AI prompt in your `.sdlb/lsp-config.conf` file
+
+#### Customizing AI Prompts
+
+You can customize how the AI generates suggestions by modifying the prompt in your configuration file:
+
+```hocon
+tabStopsPrompt = """You're helping a user with code completion in an IDE.
+The user's current file is about a Smart Data Lake Builder configuration, where the "dataObjects" block provides all the data sources
+and the "actions" block usually defines a transformation from one or more data sources to another.
+Extract a list of suggested tab stops default values.
+Tab stops have the following format in the default insert text: ${number:default_value}.
+Use the context text to suggest better default values.
+Concerning the title of the object, try to infer the intention of the user.
+For example, copying from the web to a json could be interpreted as a download action.
+Output should be valid JSON with this schema:
+[
+  {
+    "tab_stop_number": number,
+    "new_value": string
+  }
+]
+
+Default insert text:
+$insertText
+
+Suggested item is to be inserted in the following HOCON path:
+$parentPath
+
+Context text, HOCON format, the user's current file:
+$contextText"""
+```
+
+This prompt helps the AI understand the context of your Smart Data Lake Builder configuration and provide more relevant suggestions for code completion.
+
 ## Authors
 
 [scalathe](https://github.com/dsalathe)

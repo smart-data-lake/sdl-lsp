@@ -1,6 +1,6 @@
 package io.smartdatalake.context.hocon
 
-object HoconTokens {
+object HoconTokens:
   val KEY_VAL_SPLIT_REGEX = "[\\[{=]"
   val START_OBJECT = '{'
   val END_OBJECT = '}'
@@ -9,4 +9,3 @@ object HoconTokens {
   val NEW_LINE_PATTERN = "\\R"
   val COMMENT = '#'
 
-}
