@@ -32,7 +32,7 @@ If you prefer build the jar, follow the instructions below.
 To be able to build an executable jar with this project, you will need:
 
 * maven
-* java 11 or newer
+* java 21 or newer
 
 ### Installing
 
