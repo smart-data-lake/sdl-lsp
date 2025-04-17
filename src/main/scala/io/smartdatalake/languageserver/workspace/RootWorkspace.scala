@@ -45,7 +45,7 @@ class RootWorkspace(rootUri: String, workspaceRoot: String) extends WorkspaceStr
             
         addWorkspace(sortedWorkspaces, addedURIs, Map.empty)
 
-    private def fetchWorkspaceNames(rootUri: String): List[String] =
+    protected def fetchWorkspaceNames(rootUri: String): List[String] =
         val rootWorkspaces = rootUri + "/" + workspaceRoot
         val workspaces = Using(Files.newDirectoryStream(path(rootWorkspaces))) { stream =>
             stream.toScala

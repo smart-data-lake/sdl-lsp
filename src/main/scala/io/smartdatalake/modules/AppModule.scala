@@ -22,13 +22,16 @@ trait AppModule:
   lazy val contextAdvisor: ContextAdvisor = new ContextAdvisorImpl
   lazy val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl(schemaReader, contextAdvisor)
   lazy val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl(schemaReader)
-  lazy val executorService: ExecutorService = Executors.newCachedThreadPool()
-  lazy val executionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(executorService)
-  lazy given ExecutionContext = executionContext
 
   // AI Completion: Prefers colder start over slow first completion response: so no lazy val here
   val modelClient: ModelClient = new GeminiClient(Option(System.getenv("GOOGLE_API_KEY")))
-  val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)
+  lazy val ioExecutorService: ExecutorService = Executors.newCachedThreadPool()
+  lazy val ioExecutionContext: ExecutionContextExecutorService = ExecutionContext.fromExecutorService(ioExecutorService)
+  val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)(using ioExecutionContext)
+
+  lazy val serviceExecutorService: ExecutorService = Executors.newCachedThreadPool()
+  lazy val serviceExecutionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(serviceExecutorService)
+  lazy given ExecutionContext = serviceExecutionContext
 
   lazy val textDocumentService: TextDocumentService & WorkspaceContext & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
