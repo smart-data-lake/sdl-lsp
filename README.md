@@ -19,29 +19,20 @@ Usually the client has responsibility to start the server. They first communicat
 
 ## Getting Started
 
-You can either [download](https://oss.sonatype.org/content/repositories/snapshots/io/smartdatalake/sdl-lsp/1.0-SNAPSHOT/) the jar and jump directly to [Setting a basic LSP client in Intellij](#setting-a-basic-lsp-client-in-intellij) or compile and generate the jar yourself.
+### Requirements
 
-To download it, go [here](https://oss.sonatype.org/content/repositories/snapshots/io/smartdatalake/sdl-lsp/1.0-SNAPSHOT/) and take the one finishing with `XXX-jar-with-dependencies.jar`.
+- Java 17 or newer
+- IntelliJ (later also VSCode)
 
-You can now read [Setting a basic LSP client in Intellij](#setting-a-basic-lsp-client-in-intellij).
+### Download
 
-If you prefer build the jar, follow the instructions below.
+Download latest `XXX-jar-with-dependencies.jar` from [here](https://oss.sonatype.org/content/repositories/snapshots/io/smartdatalake/sdl-lsp/1.0-SNAPSHOT/) and store it in a directory of your choice.
 
-### Dependencies
+**Hint:** Should you prefer building the project on your own, follow the instructions further below.
 
-To be able to build an executable jar with this project, you will need:
+### Setting a basic LSP client in IntelliJ
 
-* maven
-* java 21 or newer
-
-### Installing
-
-* Clone the repo locally.
-* run `mvn clean package`
-
-### Setting a basic LSP client in Intellij
-
-* Download the generic LSP support for Intellij using [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij).
+* Download the generic LSP support for IntelliJ using [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij).
 * Look for the LSP4iJ icon on your IDE and click on the right and select `New Language Server`. See screnshot below: ![screenshot of Intellij for setting up LSP4IJ](resources/img/lsp4ij-plugin.png)
 * provide the following parameters:
   * `Server > Name` -> `SDLB Server`
@@ -224,6 +215,22 @@ $contextText"""
 This prompt helps the AI understand the context of your Smart Data Lake Builder configuration and provide more relevant suggestions for code completion.
 
 Don't forget to **restart the LSP Server** if you want to apply the customized prompt.
+
+## Build
+
+### Requirements
+
+To be able to build this project, you will need:
+
+* maven
+* java 21 or newer
+
+### Building
+
+* Clone the repo locally.
+* run `mvn clean package`
+
+After a successfull build, the `sdl-lsp-jar-with-dependencies.jar` is located in `./target` directory.
 
 ## Authors
 
