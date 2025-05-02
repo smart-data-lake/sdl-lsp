@@ -9,6 +9,33 @@ This LSP server currently provides:
 * smart autocompletion suggestions
 * Hovering description of objects, their attributes etc.
 
+### Features
+
+### 1. Basic Code Completion
+
+![GIF example of basic code completion](resources/img/simpleCodeCompletion.gif)
+
+### 2. ✨ AI-Augmented Code Completion ✨
+
+![GIF example of AI-augmented code completion](resources/img/aiCodeCompletion.gif)
+
+### 3. Hovering Capability
+
+![GIF example of hovering capability](resources/img/hoveringCapability.gif)
+
+### 4. Multi-File Context Awareness
+
+![GIF example of multi-file awareness](resources/img/multifileAwareness.gif)
+
+### 5. Secure Streamlined Logs in the Client
+
+*Works in IntelliJ, VSCode, Cursor, and more*
+![GIF example of streamlined logs](resources/img/streamlinedLogs.gif)
+
+### 6. Generating Default Template Configs
+
+![GIF example of LSP default template](resources/img/lspDefaultTemplate.gif)
+
 ## How it works
 
 The server communicate with an LSP client, which can be a plugin in a code editor like Intellij, VSCode, Atom etc. or even a web interface.
@@ -21,8 +48,8 @@ Usually the client has responsibility to start the server. They first communicat
 
 ### Requirements
 
-- Java 17 or newer
-- IntelliJ (later also VSCode)
+* Java 17 or newer
+* IntelliJ (later also VSCode)
 
 ### Download
 
@@ -218,7 +245,7 @@ Don't forget to **restart the LSP Server** if you want to apply the customized p
 
 ## Build
 
-### Requirements
+### Build Requirements
 
 To be able to build this project, you will need:
 

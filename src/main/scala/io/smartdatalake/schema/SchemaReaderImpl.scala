@@ -14,7 +14,6 @@ import io.smartdatalake.logging.SDLBLogger
 
 class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLogger {
 
-  private val logger = LoggerFactory.getLogger(getClass)
   private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
     Source.fromInputStream(inputStream).getLines().mkString("\n").trim
   })

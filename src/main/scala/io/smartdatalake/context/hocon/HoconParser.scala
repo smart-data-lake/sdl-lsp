@@ -13,7 +13,7 @@ import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 /**
  * Utility class to parse HOCON-formatted files
  * Note that this utility class has a restricted scope to context,
- * this is because there need to be a consistence between the text given in argument of the methods
+ * this is because there need a consistence between the text given in argument of the methods
  * and the text given in the config file, which is not guaranteed if the user of the class is not aware of that.
  */
 private[context] object HoconParser:

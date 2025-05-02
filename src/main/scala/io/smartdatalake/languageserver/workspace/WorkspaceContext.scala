@@ -19,6 +19,8 @@ import scala.annotation.tailrec
         deleting a file triggers "didClose"
         closing a file triggers "didClose"
         renaming a file from outside of watched files to watched files DO NOT trigger "didOpen" with Intellij
+  
+    To fully support the workspace, we need to handle watched files, WIP.
   */
 trait WorkspaceContext extends SDLBLogger:
 
@@ -130,9 +132,9 @@ trait WorkspaceContext extends SDLBLogger:
                     warn(s"No valid LSP config found")
                     SDLBContext.EMPTY_CONTEXT
 
-    private def normalizeURI(rootUri: String, uri: String): String =
-        val uriSplit = uri.split(":/")
-        val rootUriSplit = rootUri.split(":/")
+    private[workspace] def normalizeURI(rootUri: String, uri: String): String =
+        val uriSplit = uri.split(":/", 2)
+        val rootUriSplit = rootUri.split(":/", 2)
         if uriSplit.length <= 1 || rootUriSplit.length <= 1 then
             uri
         else

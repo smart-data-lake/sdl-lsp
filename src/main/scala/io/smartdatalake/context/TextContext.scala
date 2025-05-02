@@ -6,7 +6,7 @@ import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
 import io.smartdatalake.logging.SDLBLogger
 
-case class TextContext private (uri: String, originalText: String, workspaceUriToContents: Map[String, String], configText: String, rootConfig: Config, isConfigCompleted: Boolean = true) extends SDLBLogger {
+case class TextContext private (uri: String, originalText: String, workspaceUriToContents: Map[String, String], configText: String, rootConfig: Config, isConfigCompleted: Boolean = true) extends SDLBLogger:
 
   def withContents(newContents: Map[String, String]): TextContext = copy(workspaceUriToContents=newContents)
   
@@ -27,9 +27,8 @@ case class TextContext private (uri: String, originalText: String, workspaceUriT
 
   override def toString: String = s"TextContext(originalText=${originalText.take(50)}, configText=${configText.take(50)}, rootConfig=${rootConfig.toString})"
 
-}
 
-object TextContext{
+object TextContext:
   val EMPTY_TEXT_CONTEXT: TextContext = new TextContext("", "", Map.empty, "", HoconParser.EMPTY_CONFIG)
 
   def create(uri: String, originalText: String, workspaceUriToContents: Map[String, String]): TextContext =
@@ -37,4 +36,3 @@ object TextContext{
     val fullText = (configText::workspaceUriToContents.removed(uri).values.toList).mkString("\n")
     val config = HoconParser.parse(fullText).getOrElse(HoconParser.EMPTY_CONFIG)
     TextContext(uri, originalText, workspaceUriToContents, configText, config)
-}

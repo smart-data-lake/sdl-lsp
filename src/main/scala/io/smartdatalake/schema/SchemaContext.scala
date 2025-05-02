@@ -81,6 +81,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
           case _ => None
         })
       .getOrElse("")
+
   private def generateTemplates(oneOf: Value): Iterable[(String, Iterable[SchemaItem])] =
     oneOf match
       case Arr(array) => array.map(_.obj.get(REF) match
@@ -106,6 +107,7 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
 
       })
       case _ => Iterable.empty
+
   private def update(body: => Option[Value]): Option[SchemaContext] =
     body.flatMap(flattenRef).map(schema => copy(localSchema = schema))
 
