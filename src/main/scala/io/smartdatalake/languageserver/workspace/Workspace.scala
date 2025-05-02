@@ -3,7 +3,7 @@ package io.smartdatalake.languageserver.workspace
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.logging.SDLBLogger
 
-case class Workspace(name: String, contexts: Map[String, SDLBContext], contents: Map[String, String]) extends SDLBLogger:
+private[workspace] case class Workspace(name: String, contexts: Map[String, SDLBContext], contents: Map[String, String]) extends SDLBLogger:
     def updateContent(uri: String, newContent: String): Workspace =
         val updatedContents = contents.updated(uri, newContent)
         // Update only active context: not all contexts of the workspace

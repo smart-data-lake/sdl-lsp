@@ -17,7 +17,7 @@ trait WorkspaceStrategy:
     
     def retrieve(uri: String, workspaces: List[Workspace]): Workspace
 
-    def groupByWorkspaces(rootUri: String, contents: Map[String, String]): Map[String, Map[String, String]]
+    protected def groupByWorkspaces(rootUri: String, contents: Map[String, String]): Map[String, Map[String, String]]
 
     def buildWorkspaceMap(rootUri: String, contents: Map[String, String]): Map[String, Workspace] =
         groupByWorkspaces(rootUri, contents).flatMap { case (workspaceName, contents) =>
