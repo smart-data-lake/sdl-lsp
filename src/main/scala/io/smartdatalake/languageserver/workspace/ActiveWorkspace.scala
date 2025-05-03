@@ -32,7 +32,9 @@ class ActiveWorkspace(workspacePrefixes: String) extends WorkspaceStrategy with 
             .map(mergePath(rootUri, _))
         val activeWorkspaceName = activeWorkspacePrefixes.mkString(",")
         val (active, inactive) = contents.partition((uri, content) => activeWorkspacePrefixes.exists(uri.startsWith(_)))
-        Map(activeWorkspaceName -> active, rootUri -> inactive)
+        Map(activeWorkspaceName -> active) ++
+            inactive.map((uri, content) => uri -> Map(uri -> content))
 
     private[workspace] def mergePath(prefix: String, path: String): String =
-        prefix.reverse.dropWhile(_ == '/').reverse + "/" + path.dropWhile(_ == '/')
+        val cleanedPath = if path.startsWith("./") then path.drop(2) else path
+        prefix.reverse.dropWhile(_ == '/').reverse + "/" + cleanedPath.dropWhile(_ == '/')
