@@ -35,7 +35,7 @@ class ActiveWorkspaceSpec extends UnitSpec {
         result2.name should be (inactiveWorkspaceName)
     }
 
-    it should "partition files in active and inactive workspaces correctly" in {
+    it should "partition files in 1 active and 2 inactive workspaces correctly" in {
         val rootUri = "file://root/"
         val contents = Map(
             "file://root/conf/local/whatever.conf" -> "",
@@ -45,16 +45,20 @@ class ActiveWorkspaceSpec extends UnitSpec {
             "file://root/conf/cloud-dev/airport.conf" -> ""
         )
         val result = workspaceStrategy.groupByWorkspaces(rootUri, contents)
-        result.size should be (2)
+        val inactive1 = "file://root/conf/whatever.conf"
+        val inactive2 = "file://root/conf/cloud-dev/airport.conf"
+        result.size should be (3)
         result.keys should contain (activeWorkspaceName)
-        result.keys should contain (inactiveWorkspaceName)
+        result.keys should contain (inactive1)
+        result.keys should contain (inactive2)
         result(activeWorkspaceName).size should be (3)
-        result(inactiveWorkspaceName).size should be (2)
+        result(inactive1).size should be (1)
+        result(inactive2).size should be (1)
         result(activeWorkspaceName).keys should contain ("file://root/conf/local/whatever.conf")
         result(activeWorkspaceName).keys should contain ("file://root/conf/airport.conf")
         result(activeWorkspaceName).keys should contain ("file://root/conf/trainstation.conf")
-        result(inactiveWorkspaceName).keys should contain ("file://root/conf/whatever.conf")
-        result(inactiveWorkspaceName).keys should contain ("file://root/conf/cloud-dev/airport.conf")
+        result(inactive1).keys should contain ("file://root/conf/whatever.conf")
+        result(inactive2).keys should contain ("file://root/conf/cloud-dev/airport.conf")
     }
 
     it should "merge paths correctly" in {
@@ -79,5 +83,20 @@ class ActiveWorkspaceSpec extends UnitSpec {
         val path4 = "whatever.conf"
         val result4 = workspaceStrategy.mergePath(prefix4, path4)
         result4 should be (expected)
+
+        val prefix5 = "file://root/conf/local"
+        val path5 = "./whatever.conf"
+        val result5 = workspaceStrategy.mergePath(prefix5, path5)
+        result5 should be (expected)
+
+        val prefix6 = "file://root/conf/local/"
+        val path6 = "./whatever.conf"
+        val result6 = workspaceStrategy.mergePath(prefix6, path6)
+        result6 should be (expected)
+
+        val prefix7 = "file://root/conf/local"
+        val path7 = ".hidden/whatever.conf"
+        val result7 = workspaceStrategy.mergePath(prefix7, path7)
+        result7 should be ("file://root/conf/local/.hidden/whatever.conf")
     }
 }
