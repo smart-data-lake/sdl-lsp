@@ -105,5 +105,4 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
       case _ => None)
     case _ => None
 
-
 }
