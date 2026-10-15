@@ -1,29 +1,44 @@
 package io.smartdatalake.schema
 
+import io.circe.{Json, JsonObject}
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 import io.smartdatalake.schema.SchemaKeywords.*
-import ujson.{Arr, Obj, Str}
-import ujson.Value.Value
 
 import scala.annotation.tailrec
 import io.smartdatalake.logging.SDLBLogger
-private[schema] case class SchemaContext(private val globalSchema: Value, localSchema: Value) extends SDLBLogger:
+
+/** Pattern matching helpers on circe Json values */
+private[schema] object JsonPatterns:
+  object JStr:
+    def unapply(json: Json): Option[String] = json.asString
+  object JObj:
+    def unapply(json: Json): Option[JsonObject] = json.asObject
+  object JArr:
+    def unapply(json: Json): Option[Vector[Json]] = json.asArray
+
+  extension (json: Json)
+    /** Field of a JSON object, None if absent or if the value is not an object */
+    def field(key: String): Option[Json] = json.asObject.flatMap(_(key))
+
+import JsonPatterns.*
+
+private[schema] case class SchemaContext(private val globalSchema: Json, localSchema: Json) extends SDLBLogger:
 
   def updateByType(elementType: String): Option[SchemaContext] = update {
-    localSchema.obj.get(SCHEMA_TYPE) match
+    localSchema.field(SCHEMA_TYPE) match
       case None => handleNoSchemaType(elementType)
-      case Some(Str(SCHEMA_OBJECT)) => handleObjectSchemaTypeWithElementType(elementType)
-      case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementType(elementType)
+      case Some(JStr(SCHEMA_OBJECT)) => handleObjectSchemaTypeWithElementType(elementType)
+      case Some(JStr(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementType(elementType)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
         debug(s"update by type with an abnormal localSchema=$localSchema. elementType=$elementType")
         None
   }
   def updateByName(elementName: String): Option[SchemaContext] = update {
-    localSchema.obj.get(SCHEMA_TYPE) match
+    localSchema.field(SCHEMA_TYPE) match
       case None => None // can only update if type is provided in the user file
-      case Some(Str(SCHEMA_OBJECT)) => handleObjectSchemaTypeWithElementName(elementName)
-      case Some(Str(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementName(elementName)
+      case Some(JStr(SCHEMA_OBJECT)) => handleObjectSchemaTypeWithElementName(elementName)
+      case Some(JStr(SCHEMA_ARRAY)) => handleArraySchemaTypeWithElementName(elementName)
       // other cases should be invalid because primitive types shouldn't be updated further
       case _ =>
         debug(s"update by name with an abnormal localSchema=$localSchema. elementName=$elementName")
@@ -39,137 +54,117 @@ private[schema] case class SchemaContext(private val globalSchema: Value, localS
       case ac : AttributeCollection => ac
 
   def generateSchemaSuggestions: AttributeCollection | TemplateCollection =
-    val asObject = localSchema.obj
-    asObject.get(SCHEMA_TYPE) match
-      case Some(Str(SCHEMA_OBJECT)) =>
-        val properties = asObject.get(PROPERTIES)
-        val required = asObject.get(REQUIRED).map(_.arr.toSet).getOrElse(Set.empty)
-        properties match
-          case Some(Obj(values)) => AttributeCollection(values.map { case (attributeName, attributeProperties) =>
-            val typeName = attributeProperties.obj.get(ATTRIBUTE_TYPE).map(_.str).getOrElse(ATTRIBUTE_OBJECT)
-            val description = attributeProperties.obj.get(DESCRIPTION).map(_.str).getOrElse("")
-            SchemaItem(attributeName, ItemType.fromName(typeName), description, required.contains(attributeName))
-          })
+    localSchema.field(SCHEMA_TYPE) match
+      case Some(JStr(SCHEMA_OBJECT)) =>
+        localSchema.field(PROPERTIES) match
+          case Some(JObj(properties)) => AttributeCollection(schemaItems(properties, requiredAttributes(localSchema)))
           case _ =>
-            val templates = asObject.get(ADDITIONAL_PROPERTIES)
-              .flatMap(_.obj.get(ONE_OF))
+            val templates = localSchema.field(ADDITIONAL_PROPERTIES)
+              .flatMap(_.field(ONE_OF))
               .map(generateTemplates)
               .getOrElse(List.empty)
             TemplateCollection(templates, TemplateType.OBJECT)
-      case Some(Str(SCHEMA_ARRAY)) =>
-        val templates = asObject(ITEMS).obj.get(ONE_OF)
+      case Some(JStr(SCHEMA_ARRAY)) =>
+        val templates = localSchema.field(ITEMS).flatMap(_.field(ONE_OF))
           .map(generateTemplates)
           .getOrElse(List.empty)
         TemplateCollection(templates, TemplateType.ARRAY_ELEMENT)
-      case Some(Str(primitive)) =>
+      case Some(JStr(primitive)) =>
         debug(s"Abnormal localSchema $primitive")
         AttributeCollection(Iterable.empty[SchemaItem])
       case _ =>
-        val templates = asObject.get(ONE_OF)
+        val templates = localSchema.field(ONE_OF)
           .map(generateTemplates)
           .getOrElse(List.empty)
         TemplateCollection(templates, TemplateType.ATTRIBUTES)
   end generateSchemaSuggestions
-  
+
   def getDescription: String =
-    localSchema.obj.get(DESCRIPTION)
-      .map(_.str)
-      .orElse(localSchema.obj.get(ADDITIONAL_PROPERTIES)
-        .flatMap{
-          case Obj(value) => value.get(DESCRIPTION).map(_.str)
-          case _ => None
-        })
+    localSchema.field(DESCRIPTION).flatMap(_.asString)
+      .orElse(localSchema.field(ADDITIONAL_PROPERTIES).flatMap(_.field(DESCRIPTION)).flatMap(_.asString))
       .getOrElse("")
 
-  private def generateTemplates(oneOf: Value): Iterable[(String, Iterable[SchemaItem])] =
+  private def requiredAttributes(schema: Json): Set[String] =
+    schema.field(REQUIRED).flatMap(_.asArray).map(_.flatMap(_.asString).toSet).getOrElse(Set.empty)
+
+  /** Schema items in the order of the schema file */
+  private def schemaItems(properties: JsonObject, required: Set[String]): Iterable[SchemaItem] =
+    properties.toIterable.map { (attributeName, attributeProperties) =>
+      val typeName = attributeProperties.field(ATTRIBUTE_TYPE).flatMap(_.asString).getOrElse(ATTRIBUTE_OBJECT)
+      val description = attributeProperties.field(DESCRIPTION).flatMap(_.asString).getOrElse("")
+      SchemaItem(attributeName, ItemType.fromName(typeName), description, required.contains(attributeName))
+    }
+
+  private def generateTemplates(oneOf: Json): Iterable[(String, Iterable[SchemaItem])] =
     oneOf match
-      case Arr(array) => array.map(_.obj.get(REF) match
-        case Some(Str(path)) => goToSchemaDefinition(path)
+      case JArr(array) => array.flatMap(_.field(REF) match
+        case Some(JStr(path)) => goToSchemaDefinition(path)
         case _ => None
-      ).flatMap(_.map {
-        case Obj(obj) =>
-          val properties = obj.get(PROPERTIES)
-          val required = obj.get(REQUIRED).map(_.arr.toSet).getOrElse(Set.empty)
-          val objectName = properties.flatMap(_.obj.get(ATTRIBUTE_TYPE)).flatMap(_.obj.get(SCHEMA_CONST)).flatMap {
-            case Str(oName) => Some(oName)
-            case _ => None
-          }.getOrElse(DEFAULT_PROPERTY_NAME)
+      ).map {
+        case definition @ JObj(_) =>
+          val properties = definition.field(PROPERTIES)
+          val objectName = properties.flatMap(_.field(ATTRIBUTE_TYPE)).flatMap(_.field(SCHEMA_CONST)).flatMap(_.asString)
+            .getOrElse(DEFAULT_PROPERTY_NAME)
           val items = properties match
-            case Some(Obj(values)) => values.map { case (attributeName, attributeProperties) =>
-              val typeName = attributeProperties.obj.get(ATTRIBUTE_TYPE).map(_.str).getOrElse(ATTRIBUTE_OBJECT)
-              val description = attributeProperties.obj.get(DESCRIPTION).map(_.str).getOrElse("")
-              SchemaItem(attributeName, ItemType.fromName(typeName), description, required.contains(attributeName))
-            }
+            case Some(JObj(values)) => schemaItems(values, requiredAttributes(definition))
             case _ => Iterable.empty[SchemaItem]
           (objectName, items.filter(_.required))
         case _ => ("", Iterable.empty[SchemaItem])
-
-      })
+      }
       case _ => Iterable.empty
 
-  private def update(body: => Option[Value]): Option[SchemaContext] =
+  private def update(body: => Option[Json]): Option[SchemaContext] =
     body.flatMap(flattenRef).map(schema => copy(localSchema = schema))
 
-
-
-  private def flattenRef(schema: Value): Option[Value] = schema match
-    case Obj(obj) => obj.get(REF) match
-      case Some(Str(path)) => goToSchemaDefinition(path).flatMap(flattenRef)
+  private def flattenRef(schema: Json): Option[Json] = schema match
+    case JObj(_) => schema.field(REF) match
+      case Some(JStr(path)) => goToSchemaDefinition(path).flatMap(flattenRef)
       case _ => Some(schema)
     case _ =>
       debug(s"abnormal schema when flattening at the end: $schema")
       None
-  private def handleNoSchemaType(elementType: String): Option[Value] =
-    localSchema.obj.get(ONE_OF).flatMap(findElementTypeWithOneOf(_, elementType))
+  private def handleNoSchemaType(elementType: String): Option[Json] =
+    localSchema.field(ONE_OF).flatMap(findElementTypeWithOneOf(_, elementType))
 
-  private def findElementTypeWithOneOf(oneOf: Value, elementType: String): Option[Value] = oneOf match
-    case Arr(array) =>
-      val path = array.arr.toSet.find {
-        case Obj(refPath) => refPath.get(REF).exists {
-          case Str(path) => path.split(SCHEMA_PATH_SEPARATOR).last == elementType
-          case _ => false
-        }
-        case _ => false
-      }.flatMap(_.obj.get(REF))
+  private def findElementTypeWithOneOf(oneOf: Json, elementType: String): Option[Json] = oneOf match
+    case JArr(array) =>
+      val path = array.flatMap(_.field(REF)).flatMap(_.asString)
+        .find(_.split(SCHEMA_PATH_SEPARATOR).last == elementType)
       path match
-        case Some(Str(path)) => goToSchemaDefinition(path)
+        case Some(path) => goToSchemaDefinition(path)
         case _ =>
           debug(s"no path found with elementType=$elementType in oneOf=$oneOf")
           None
     case _ =>
       warn(s"Attempt to find element type with oneOf, but it is not an array: $oneOf")
       None
-  private def handleObjectSchemaTypeWithElementType(elementType: String): Option[Value] =
-    localSchema.obj.get(ADDITIONAL_PROPERTIES)
-      .flatMap(_.obj.get(ONE_OF))
+  private def handleObjectSchemaTypeWithElementType(elementType: String): Option[Json] =
+    localSchema.field(ADDITIONAL_PROPERTIES)
+      .flatMap(_.field(ONE_OF))
       .flatMap(findElementTypeWithOneOf(_, elementType))
-  private def handleObjectSchemaTypeWithElementName(elementName: String): Option[Value] =
-    localSchema.obj.get(PROPERTIES) match
-      case Some(Obj(values)) => values.get(elementName)
-      case _ => None // This can be a common case, when trying to move with "byName" even though a type in the config is defined
-  private def handleArraySchemaTypeWithElementType(elementType: String): Option[Value] =
-    localSchema.obj.get(ITEMS)
-      .flatMap(_.obj.get(ONE_OF))
+  private def handleObjectSchemaTypeWithElementName(elementName: String): Option[Json] =
+    // None can be a common case, when trying to move with "byName" even though a type in the config is defined
+    localSchema.field(PROPERTIES).flatMap(_.field(elementName))
+  private def handleArraySchemaTypeWithElementType(elementType: String): Option[Json] =
+    localSchema.field(ITEMS)
+      .flatMap(_.field(ONE_OF))
       .flatMap(findElementTypeWithOneOf(_, elementType))
-  private def handleArraySchemaTypeWithElementName(elementName: String): Option[Value] =
-    val itemSchema = localSchema.obj.get(ITEMS)
-    itemSchema.flatMap(_.obj.get(SCHEMA_TYPE)) match
-      case Some(Str(SCHEMA_OBJECT)) => itemSchema
-        .flatMap(_.obj.get(PROPERTIES))
-        .flatMap(_.obj.get(elementName))
-      case Some(Str(SCHEMA_ARRAY)) =>
+  private def handleArraySchemaTypeWithElementName(elementName: String): Option[Json] =
+    val itemSchema = localSchema.field(ITEMS)
+    itemSchema.flatMap(_.field(SCHEMA_TYPE)) match
+      case Some(JStr(SCHEMA_OBJECT)) => itemSchema
+        .flatMap(_.field(PROPERTIES))
+        .flatMap(_.field(elementName))
+      case Some(JStr(SCHEMA_ARRAY)) =>
         warn(s"request to handle Array Schema with element type array itself $localSchema")
         None
       case _ => None // This can be a common case, when trying to move with "byName" even though a type in the config is defined
 
-  private def goToSchemaDefinition(path: String): Option[ujson.Value.Value] =
+  private def goToSchemaDefinition(path: String): Option[Json] =
     @tailrec
-    def applyPathSegment(remainingPath: List[String], oCurrentSchema: Option[ujson.Value.Value]): Option[ujson.Value.Value] = remainingPath match
+    def applyPathSegment(remainingPath: List[String], oCurrentSchema: Option[Json]): Option[Json] = remainingPath match
       case Nil => oCurrentSchema
-      case pathSegment::newRemainingPath => applyPathSegment(newRemainingPath, oCurrentSchema.flatMap(currentSchema => currentSchema.obj.get(pathSegment)))
+      case pathSegment::newRemainingPath => applyPathSegment(newRemainingPath, oCurrentSchema.flatMap(_.field(pathSegment)))
 
     val splitPath = path.split(SCHEMA_PATH_SEPARATOR).toList.tail
     applyPathSegment(splitPath, Some(globalSchema))
-
-
-

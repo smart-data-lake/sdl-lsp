@@ -4,8 +4,8 @@ import com.typesafe.config.ConfigObject
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
-import ujson.*
 
+import io.smartdatalake.schema.JsonAssertions.*
 
 class SchemaReaderSpec extends UnitSpec {
 
@@ -31,7 +31,7 @@ class SchemaReaderSpec extends UnitSpec {
     val context = initialContext.withCaretPosition(23, 6)
     val schemaContext = schemaReader.retrieveSchemaContext(context, withWordInPath = false)
     schemaContext shouldBe defined
-    schemaContext.get.localSchema shouldBe a [Obj]
+    schemaContext.get.localSchema.isObject shouldBe true
     schemaContext.get.localSchema.obj should contain key "description"
   }
 
@@ -39,7 +39,7 @@ class SchemaReaderSpec extends UnitSpec {
     val context = initialContext.withCaretPosition(23, 7)
     val schemaContext = schemaReader.retrieveSchemaContext(context, withWordInPath = false)
     schemaContext shouldBe defined
-    schemaContext.get.localSchema shouldBe a [Obj]
+    schemaContext.get.localSchema.isObject shouldBe true
     schemaContext.get.localSchema.obj.get("properties").get.obj should have size 6
   }
 
@@ -47,7 +47,7 @@ class SchemaReaderSpec extends UnitSpec {
     val context = initialContext.withCaretPosition(23, 8)
     val schemaContext = schemaReader.retrieveSchemaContext(context, withWordInPath = false)
     schemaContext shouldBe defined
-    schemaContext.get.localSchema shouldBe a [Obj]
+    schemaContext.get.localSchema.isObject shouldBe true
     schemaContext.get.localSchema.obj should contain ("type" -> Str("array"))
     schemaContext.get.localSchema.obj should contain key "items"
     schemaContext.get.localSchema.obj.get("items").get.obj.get("oneOf").get.arr should have size 8

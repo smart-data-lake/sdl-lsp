@@ -2,7 +2,18 @@ package io.smartdatalake.schema
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
-import ujson.*
+import io.circe.Json
+
+
+/** Assertion helpers on circe Json values */
+private[schema] object JsonAssertions:
+  def Str(value: String): Json = Json.fromString(value)
+  def Obj(fields: (String, Json)*): Json = Json.obj(fields*)
+  extension (json: Json)
+    def obj: Map[String, Json] = json.asObject.map(_.toMap).getOrElse(Map.empty)
+    def arr: Vector[Json] = json.asArray.getOrElse(Vector.empty)
+
+import JsonAssertions.*
 
 
 class SchemaContextSpec extends UnitSpec {
@@ -33,7 +44,7 @@ class SchemaContextSpec extends UnitSpec {
     val actionContext = actionSchemaContext
     actionContext shouldBe defined
     val localSchema = actionContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should contain key "type"
     localSchema.obj should contain key "additionalProperties"
     localSchema.obj should have size 2
@@ -43,7 +54,7 @@ class SchemaContextSpec extends UnitSpec {
     val specificActionContext = specificActionSchemaContext
     specificActionContext shouldBe defined
     val localSchema = specificActionContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should contain key "type"
     localSchema.obj should contain key "properties"
     localSchema.obj should contain key "title"
@@ -59,7 +70,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionMetaDataContext = copyActionMetaDataSchemaContext
     copyActionMetaDataContext shouldBe defined
     val localSchema = copyActionMetaDataContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 5
     localSchema.obj should contain key "type"
     localSchema.obj should contain key "properties"
@@ -70,7 +81,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionInputIdContext = copyActionInputIdSchemaContext
     copyActionInputIdContext shouldBe defined
     val localSchema = copyActionInputIdContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 2
     localSchema.obj should contain ("type" -> Str("string"))
     localSchema.obj should contain ("description" -> Str("inputs DataObject"))
@@ -82,7 +93,7 @@ class SchemaContextSpec extends UnitSpec {
       .flatMap(_.updateByName("inputIds"))
     copyActionInputIdsContext shouldBe defined
     val localSchema = copyActionInputIdsContext.get.localSchema
-    localSchema shouldBe a[Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 3
     localSchema.obj should contain ("type" -> Str("array"))
     localSchema.obj should contain ("items" -> Obj("type" -> Str("string")))
@@ -92,7 +103,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionExecutionModeWithoutTypeContext = copyActionExecutionModeWithoutTypeSchemaContext
     copyActionExecutionModeWithoutTypeContext shouldBe defined
     val localSchema = copyActionExecutionModeWithoutTypeContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 2
     localSchema.obj should contain ("description" -> Str("optional execution mode for this Action"))
     localSchema.obj should contain key "oneOf"
@@ -102,7 +113,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionExecutionModeWithTypeContext = copyActionExecutionModeWithTypeSchemaContext
     copyActionExecutionModeWithTypeContext shouldBe defined
     val localSchema = copyActionExecutionModeWithTypeContext.get.localSchema
-    localSchema shouldBe a[Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 6
     localSchema.obj should contain("title" -> Str("DataFrameIncrementalMode"))
     localSchema.obj should contain key "properties"
@@ -113,7 +124,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionTransformerContext = copyActionTransformerSchemaContext
     copyActionTransformerContext shouldBe defined
     val localSchema = copyActionTransformerContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 5
     localSchema.obj should contain ("title" -> Str("CustomDfTransformerConfig"))
   }
@@ -122,7 +133,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionTransformersContext = copyActionTransformersSchemaContext
     copyActionTransformersContext shouldBe defined
     val localSchema = copyActionTransformersContext.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 3
     localSchema.obj should contain key "description"
     localSchema.obj should contain key "type"
@@ -138,7 +149,7 @@ class SchemaContextSpec extends UnitSpec {
     val copyActionTransformersAt1Context = copyActionTransformersAt1SchemaContext
     copyActionTransformersAt1Context shouldBe defined
     val localSchema = copyActionTransformersAt1Context.get.localSchema
-    localSchema shouldBe a [Obj]
+    localSchema.isObject shouldBe true
     localSchema.obj should have size 6
     localSchema.obj should contain ("title" -> Str("SQLDfTransformer"))
     localSchema.obj should contain key "properties"
