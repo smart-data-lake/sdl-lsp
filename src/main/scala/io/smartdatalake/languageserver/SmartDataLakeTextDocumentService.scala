@@ -30,7 +30,8 @@ class SmartDataLakeTextDocumentService(
       with ClientAware with SDLBLogger {
   import workspaceManager.{getContext, isLSPConfigUri, defaultLSPConfigText}
 
-  private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
+  // The client type is only known after the initialize request
+  private def formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
   private val precomputedCompletions: TrieMap[String, Future[String]] = TrieMap.empty
   private val AI_COMPLETION_TIMEOUT = 3.seconds
 
