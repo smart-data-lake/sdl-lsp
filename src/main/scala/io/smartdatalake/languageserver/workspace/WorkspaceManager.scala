@@ -18,6 +18,8 @@ import scala.util.{Try, Using}
   * All these files form a single workspace: each of them sees the content of the others.
   * Any other file opened by the client is handled in isolation. Without `configPaths`, the whole project root is used.
   *
+  * Saving the LSP config reloads it, together with all config files, without losing unsaved changes of opened documents.
+  *
   * Events sent by the client (IntelliJ):
   *   creating or opening a file triggers "didOpen"
   *   even with auto-save, only ctrl+S triggers "didSave"
@@ -29,21 +31,54 @@ class WorkspaceManager extends SDLBLogger:
     import WorkspaceManager.*
 
     private case class State(
+        rootUri: String = "",
         configPaths: List[Path] = List.empty,
         workspace: Workspace = Workspace(),
         isolated: Map[String, SDLBContext] = Map.empty,
-        lspConfig: SDLBContext = SDLBContext.EMPTY_CONTEXT):
+        lspConfig: SDLBContext = SDLBContext.EMPTY_CONTEXT,
+        openDocuments: Map[String, String] = Map.empty):
 
         def isInWorkspace(uri: String): Boolean =
             workspace.contains(uri) || toPath(uri).exists(path => configPaths.exists(path.startsWith))
 
+        def withContent(uri: String, text: String): State =
+            if isInWorkspace(uri) then
+                copy(workspace = workspace.updateContent(uri, text))
+            else
+                val context = isolated.get(uri)
+                    .map(_.withText(text))
+                    .getOrElse(SDLBContext.fromText(uri, text))
+                copy(isolated = isolated.updated(uri, context))
+
     private var state = State()
+    private var lspConfigListeners: List[SDLBContext => Unit] = List.empty
+
+    /** The listener is called each time the LSP config is loaded: at initialization and when it is saved */
+    def onLSPConfigLoaded(listener: SDLBContext => Unit): Unit = synchronized {
+        lspConfigListeners = lspConfigListeners :+ listener
+    }
 
     def initialize(rootUri: String): SDLBContext =
-        val newState = toPath(rootUri).filter(path => rootUri.nonEmpty && Files.isDirectory(path)) match
+        val newState = loadState(rootUri)
+        synchronized { state = newState }
+        notifyLSPConfigLoaded(newState.lspConfig)
+        newState.lspConfig
+
+    /** Reloads the LSP config and all config files from disk, keeping the current text of the opened documents */
+    def reload(): Unit =
+        val loadedState = loadState(synchronized(state.rootUri))
+        val newState = synchronized {
+            state = state.openDocuments.foldLeft(loadedState) { case (s, (uri, text)) => s.withContent(uri, text) }
+                .copy(openDocuments = state.openDocuments)
+            state
+        }
+        notifyLSPConfigLoaded(newState.lspConfig)
+
+    private def loadState(rootUri: String): State =
+        toPath(rootUri).filter(path => rootUri.nonEmpty && Files.isDirectory(path)) match
             case None =>
                 info(s"No project root folder found with '$rootUri': each file is handled in isolation")
-                State()
+                State(rootUri)
             case Some(rootPath) =>
                 val lspConfig = loadLSPConfig(rootUri, rootPath)
                 val configPaths = configPathEntries(lspConfig) match
@@ -54,9 +89,12 @@ class WorkspaceManager extends SDLBLogger:
                     normalizeURI(rootUri, file.toUri.toString) -> Try(Files.readString(file)).getOrElse("")
                 }.filterNot((uri, _) => isLSPConfigUri(uri)).toMap
                 info(s"Loaded ${texts.size} config files from ${configPaths.mkString(", ")}")
-                State(configPaths, Workspace.fromTexts(texts), Map.empty, lspConfig)
-        synchronized { state = newState }
-        newState.lspConfig
+                State(rootUri, configPaths, Workspace.fromTexts(texts), Map.empty, lspConfig)
+
+    private def notifyLSPConfigLoaded(lspConfig: SDLBContext): Unit =
+        synchronized(lspConfigListeners).foreach(listener =>
+            Try(listener(lspConfig)).failed.foreach(ex => warn(s"Error while applying the LSP config: ${ex.getMessage}"))
+        )
 
     def getContext(uri: String): SDLBContext =
         if isLSPConfigUri(uri) then SDLBContext.EMPTY_CONTEXT
@@ -70,32 +108,32 @@ class WorkspaceManager extends SDLBLogger:
                 }
         }
 
-    /** To be called when a file is opened or changed */
+    /** To be called when a document is opened or changed */
     def updateContent(uri: String, text: String): Unit =
         if isLSPConfigUri(uri) then synchronized {
             state = state.copy(lspConfig = SDLBContext.fromText(uri, text))
         }
         else synchronized {
-            state =
-                if state.isInWorkspace(uri) then
-                    state.copy(workspace = state.workspace.updateContent(uri, text))
-                else
-                    val context = state.isolated.get(uri)
-                        .map(_.withText(text))
-                        .getOrElse(SDLBContext.fromText(uri, text))
-                    state.copy(isolated = state.isolated.updated(uri, context))
+            state = state.withContent(uri, text).copy(openDocuments = state.openDocuments.updated(uri, text))
         }
 
-    /** To be called when a file is closed: unsaved changes are discarded, deleted files are removed */
+    /** To be called when a document is saved: saving the LSP config applies it */
+    def save(uri: String): Unit =
+        if isLSPConfigUri(uri) then
+            info(s"Reloading LSP config from $uri")
+            reload()
+
+    /** To be called when a document is closed: unsaved changes are discarded, deleted files are removed */
     def close(uri: String): Unit =
         if !isLSPConfigUri(uri) then
-            toPath(uri).filter(Files.isRegularFile(_)).flatMap(path => Try(Files.readString(path)).toOption) match
-                case Some(text) => updateContent(uri, text)
-                case None =>
-                    info(s"Detecting deletion of $uri")
-                    synchronized {
-                        state = state.copy(workspace = state.workspace.remove(uri), isolated = state.isolated - uri)
-                    }
+            val diskText = toPath(uri).filter(Files.isRegularFile(_)).flatMap(path => Try(Files.readString(path)).toOption)
+            if diskText.isEmpty then info(s"Detecting deletion of $uri")
+            synchronized {
+                val updated = diskText match
+                    case Some(text) => state.withContent(uri, text)
+                    case None => state.copy(workspace = state.workspace.remove(uri), isolated = state.isolated - uri)
+                state = updated.copy(openDocuments = state.openDocuments - uri)
+            }
 
     def isLSPConfigUri(uri: String): Boolean = uri.endsWith(CONFIG_FILE_NAME)
 

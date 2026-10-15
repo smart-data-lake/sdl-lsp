@@ -45,4 +45,4 @@ Surefire is disabled; tests run via `scalatest-maven-plugin`, so use `-Dsuites`,
 
 - Scala 3 syntax, mixing brace and significant-indentation styles; match the surrounding file. Java↔Scala collection conversions go through `conversions/ScalaJavaConverterAPI` (`.toScala`, `.toJava`), including `Future` → `CompletableFuture`.
 - Tests are ScalaTest `AnyFlatSpec` + `should.Matchers`; HOCON fixtures live in `src/test/resources/fixture/hocon/` and are loaded with `loadFile(...)`.
-- Changes to the LSP config file require a server restart on the client side.
+- Saving `.sdlb/lsp-config.conf` (`didSave`) calls `WorkspaceManager.reload()`: config files are reloaded from disk, opened documents keep their text, and `Configurator` is re-applied through the `onLSPConfigLoaded` listener.
