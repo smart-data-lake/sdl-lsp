@@ -1,7 +1,7 @@
 package io.smartdatalake.navigation
 
 import com.typesafe.config.{Config, ConfigObject}
-import io.smartdatalake.context.{References, SDLBContext}
+import io.smartdatalake.context.{ParsedText, References, SDLBContext}
 import io.smartdatalake.context.hocon.{HoconDocument, PathMatch}
 import io.smartdatalake.context.References.{ACTIONS, CONNECTIONS, DATA_OBJECTS}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
@@ -13,12 +13,21 @@ import scala.util.Try
 case class Reference(section: String, id: String, location: Location)
 
 /**
-  * A config file as seen by the navigation features: its current text and its last valid unresolved config.
-  * @param parseSyntax gives the syntax tree of the text, e.g. the one already parsed by the context of the file
+  * A config file as seen by the navigation features and the diagnostics.
+  * @param source current text of the file
+  * @param config last valid unresolved config of the file
   */
-case class ConfigFile(uri: String, text: String, config: Config)(parseSyntax: () => HoconDocument = () => HoconDocument.parse(text)):
+case class ConfigFile(source: ParsedText, config: Config):
+  def uri: String = source.uri
+  def text: String = source.text
+
   /** Syntax tree of the current text, giving the locations */
-  lazy val syntax: HoconDocument = parseSyntax()
+  def syntax: HoconDocument = source.syntax
+
+  /** The next version of the file: its config is kept while the text is invalid */
+  def withText(newText: String): ConfigFile =
+    val newSource = ParsedText(uri, newText)
+    ConfigFile(newSource, newSource.config.getOrElse(config))
 
   def range(start: Int, end: Int): Range =
     val (startLine, startColumn) = syntax.positionAt(start)
@@ -90,3 +99,8 @@ class NavigationEngine:
   private def objectType(file: ConfigFile, m: PathMatch): String =
     file.syntax.children(m).filter(child => child.segment.name == "type" && child.isWholeKey)
       .flatMap(_.value.flatMap(_.stringValue)).lastOption.getOrElse("")
+
+object ConfigFile:
+  def apply(uri: String, text: String): ConfigFile =
+    val source = ParsedText(uri, text)
+    ConfigFile(source, source.config.getOrElse(SDLBContext.EMPTY_CONFIG))

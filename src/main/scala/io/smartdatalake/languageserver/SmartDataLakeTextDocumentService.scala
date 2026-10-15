@@ -139,7 +139,7 @@ class SmartDataLakeTextDocumentService(
     Try {
       val visibleFiles = workspaceManager.visibleFiles(uri)
       visibleFiles.find(_.uri == uri).foreach { file =>
-        val diagnostics = diagnosticsEngine.diagnostics(uri, file.text, visibleFiles)
+        val diagnostics = diagnosticsEngine.diagnostics(file, visibleFiles)
         client.foreach(_.publishDiagnostics(PublishDiagnosticsParams(uri, diagnostics.toJava)))
       }
     }.failed.foreach(ex => warn(s"Error while computing the diagnostics of $uri: ${ex.getMessage}"))

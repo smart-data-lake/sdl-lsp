@@ -2,8 +2,6 @@ package io.smartdatalake.diagnostics
 
 import com.typesafe.config.{ConfigException, ConfigObject, ConfigValueType}
 import io.smartdatalake.context.References.{ACTIONS, CONNECTIONS, DATA_OBJECTS}
-import io.smartdatalake.context.SDLBContext
-import io.smartdatalake.context.hocon.HoconDocument
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import io.smartdatalake.navigation.{ConfigFile, NavigationEngine, Reference}
 import io.smartdatalake.schema.SchemaReaderImpl
@@ -21,18 +19,15 @@ class DiagnosticsEngine(schemaReader: SchemaReaderImpl, navigationEngine: Naviga
   import DiagnosticsEngine.*
 
   /** @param visibleFiles files seen from the document, used to know which objects are defined */
-  def diagnostics(uri: String, text: String, visibleFiles: Iterable[ConfigFile]): List[Diagnostic] =
-    // The visible file with the same text already has its syntax tree
-    val syntax = () => visibleFiles.find(file => file.uri == uri && file.text == text).map(_.syntax).getOrElse(HoconDocument.parse(text))
-    SDLBContext.parseOrError(uri, text) match
+  def diagnostics(file: ConfigFile, visibleFiles: Iterable[ConfigFile]): List[Diagnostic] =
+    file.source.configOrError match
       case Left(error) =>
-        val file = ConfigFile(uri, text, SDLBContext.EMPTY_CONFIG)(syntax)
         // Typesafe Config only reports the first error, and may find errors the syntax tree doesn't know about
-        if file.syntax.errors.isEmpty then List(syntaxError(text, error))
+        if file.syntax.errors.isEmpty then List(syntaxError(file.text, error))
         else file.syntax.errors.map(e => diagnostic(file.range(e.start, math.max(e.end, e.start + 1)), DiagnosticSeverity.Error, e.message))
-      case Right(config) =>
-        val file = ConfigFile(uri, text, config)(syntax)
-        val files = file :: visibleFiles.filterNot(_.uri == uri).toList
+      case Right(_) =>
+        // The config of a valid file is the config of its current text
+        val files = file :: visibleFiles.filterNot(_.uri == file.uri).toList
         (unknownReferences(file, files) ++ unknownTypes(file)).sortBy(d => (d.getRange.getStart.getLine, d.getRange.getStart.getCharacter))
 
   /** Error reported by Typesafe Config, on the whole line */

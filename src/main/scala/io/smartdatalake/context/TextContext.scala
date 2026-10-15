@@ -1,51 +1,53 @@
 package io.smartdatalake.context
 
 import com.typesafe.config.{Config, ConfigResolveOptions}
-import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.{HoconDocument, HoconParser}
 import io.smartdatalake.logging.SDLBLogger
 import io.smartdatalake.utils.Lazy
 import scala.util.Try
 
 /**
-  * @param originalText current text of the file
+  * @param source current text of the file
   * @param othersConfig unresolved config of the other files of the workspace
-  * @param rootConfig resolved config of the file merged with the other files: the last valid one while the text is invalid
-  * @param parsedSyntax syntax tree of the current text, parsed once per text
+  * @param resolvedConfig resolved config of the file merged with the other files, computed on first use:
+  *                       the last valid one while the text is invalid
   */
-case class TextContext private (uri: String, originalText: String, othersConfig: Config, rootConfig: Config, isConfigCompleted: Boolean,
-                                private val parsedSyntax: Lazy[HoconDocument]) extends SDLBLogger:
+case class TextContext private (source: ParsedText, othersConfig: Config, private val resolvedConfig: Lazy[Config]) extends SDLBLogger:
+
+  def uri: String = source.uri
+  def originalText: String = source.text
+  def isConfigCompleted: Boolean = source.config.isDefined
+
+  /** Resolved config of the file merged with the other files: the last valid one while the text is invalid */
+  def rootConfig: Config = resolvedConfig.value
 
   /** Syntax tree of the current text, used to locate the caret */
-  def syntax: HoconDocument = parsedSyntax.value
+  def syntax: HoconDocument = source.syntax
 
-  def withOthersConfig(newOthersConfig: Config): TextContext = copy(othersConfig = newOthersConfig)
+  def withOthersConfig(newOthersConfig: Config): TextContext = TextContext.build(source, newOthersConfig, resolvedConfig)
 
-  def update(newText: String): TextContext = this match
-    case EMPTY_TEXT_CONTEXT => TextContext.create(uri, newText, othersConfig)
-    case _ => updateContext(newText)
+  def update(newText: String): TextContext = withSource(ParsedText(uri, newText))
 
-  private def updateContext(newText: String) =
-    // The same text is given again to merge it with a new config of the other files
-    val newSyntax = if newText == originalText then parsedSyntax else TextContext.lazySyntax(newText)
-    // While the text is invalid, keep the last valid config but always locate the caret in the current text
-    HoconParser.parse(newText, uri) match
-      case None => copy(originalText=newText, isConfigCompleted=false, parsedSyntax=newSyntax)
-      case Some(config) => copy(originalText=newText, rootConfig=TextContext.mergeAndResolve(config, othersConfig), isConfigCompleted=true, parsedSyntax=newSyntax)
+  def withSource(newSource: ParsedText): TextContext = TextContext.build(newSource, othersConfig, resolvedConfig)
 
-  override def toString: String = s"TextContext(originalText=${originalText.take(50)}, rootConfig=${rootConfig.toString.take(200)})"
+  override def toString: String = s"TextContext(originalText=${originalText.take(50)}, isConfigCompleted=$isConfigCompleted)"
 
 
 object TextContext:
-  val EMPTY_TEXT_CONTEXT: TextContext = new TextContext("", "", HoconParser.EMPTY_CONFIG, HoconParser.EMPTY_CONFIG, true, lazySyntax(""))
+  val EMPTY_TEXT_CONTEXT: TextContext = create(ParsedText("", ""), HoconParser.EMPTY_CONFIG)
 
-  def create(uri: String, originalText: String, othersConfig: Config): TextContext =
-    val config = HoconParser.parse(originalText, uri)
-    // An invalid file still sees the content of the other files
-    val rootConfig = mergeAndResolve(config.getOrElse(HoconParser.EMPTY_CONFIG), othersConfig)
-    TextContext(uri, originalText, othersConfig, rootConfig, config.isDefined, lazySyntax(originalText))
+  def create(uri: String, originalText: String, othersConfig: Config): TextContext = create(ParsedText(uri, originalText), othersConfig)
 
-  private def lazySyntax(text: String): Lazy[HoconDocument] = Lazy(HoconDocument.parse(text))
+  // An invalid file still sees the content of the other files
+  def create(source: ParsedText, othersConfig: Config): TextContext =
+    build(source, othersConfig, Lazy(mergeAndResolve(HoconParser.EMPTY_CONFIG, othersConfig)))
+
+  /** While the text is invalid, the last valid config is kept */
+  private def build(source: ParsedText, othersConfig: Config, lastValidConfig: Lazy[Config]): TextContext =
+    val resolvedConfig = source.config match
+      case Some(config) => Lazy(mergeAndResolve(config, othersConfig))
+      case None => lastValidConfig
+    new TextContext(source, othersConfig, resolvedConfig)
 
   /** The current file has priority over the other files. Substitutions are resolved as far as possible */
   private def mergeAndResolve(config: Config, othersConfig: Config): Config =

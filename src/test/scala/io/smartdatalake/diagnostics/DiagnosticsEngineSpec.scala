@@ -1,7 +1,6 @@
 package io.smartdatalake.diagnostics
 
 import io.smartdatalake.UnitSpec
-import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.navigation.{ConfigFile, NavigationEngine}
 import org.eclipse.lsp4j.DiagnosticSeverity
 
@@ -11,11 +10,11 @@ class DiagnosticsEngineSpec extends UnitSpec:
     private val uri = "file:///ws/actions.conf"
     private val objectsUri = "file:///ws/objects.conf"
     private val objectsText = "dataObjects {\n  ext-departures { type = CsvFileDataObject }\n}\nconnections {\n  my-db { type = JdbcTableConnection }\n}"
-    private val objectsFile = ConfigFile(objectsUri, objectsText, SDLBContext.parse(objectsUri, objectsText).get)()
+    private val objectsFile = ConfigFile(objectsUri, objectsText)
 
     /** (severity, 1-based line, column, message) of each diagnostic */
     private def check(text: String, files: List[ConfigFile] = List(objectsFile)) =
-        engine.diagnostics(uri, text, files).map(d => (d.getSeverity, d.getRange.getStart.getLine + 1, d.getRange.getStart.getCharacter, d.getMessage))
+        engine.diagnostics(ConfigFile(uri, text), files).map(d => (d.getSeverity, d.getRange.getStart.getLine + 1, d.getRange.getStart.getCharacter, d.getMessage))
 
     "Diagnostics engine" should "report syntax errors with their position" in {
         // The last brace closes a1, so actions is not closed
