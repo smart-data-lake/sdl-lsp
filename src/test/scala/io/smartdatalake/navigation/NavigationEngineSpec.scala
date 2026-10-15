@@ -2,6 +2,7 @@ package io.smartdatalake.navigation
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.context.SDLBContext
+import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.Location
 
 class NavigationEngineSpec extends UnitSpec:
@@ -78,3 +79,17 @@ class NavigationEngineSpec extends UnitSpec:
         engine.definitions(actionsContext(3, 13), files) shouldBe empty
         engine.references(actionsContext(2, 3), files, includeDeclaration = true) shouldBe empty
     }
+
+    it should "provide the outline of a file" in {
+        val symbols = engine.documentSymbols(file(objectsUri, objectsText))
+        symbols.map(_.getName) shouldBe List("connections", "dataObjects")
+        val dataObjects = symbols(1)
+        (dataObjects.getRange.getStart.getLine + 1, dataObjects.getRange.getEnd.getLine + 1) shouldBe (4, 12)
+        val children = dataObjects.getChildren.toScala
+        children.map(c => (c.getName, c.getDetail, c.getRange.getStart.getLine + 1, c.getRange.getEnd.getLine + 1)) shouldBe
+            List(("ext-departures", "CsvFileDataObject", 5, 7), ("quoted-obj", "JdbcTableDataObject", 8, 11))
+        symbols.head.getChildren.toScala.map(c => (c.getName, c.getRange.getStart.getLine + 1, c.getRange.getEnd.getLine + 1)) shouldBe
+            List(("my-db", 2, 2))
+        engine.documentSymbols(file(actionsUri, actionsText)).head.getChildren.toScala.map(_.getName) shouldBe List("a1", "a2")
+    }
+

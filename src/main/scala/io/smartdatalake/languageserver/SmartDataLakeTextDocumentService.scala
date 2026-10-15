@@ -13,7 +13,7 @@ import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
   DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-  DefinitionParams, Hover, HoverParams, InsertTextMode, Location, LocationLink, ReferenceParams}
+  DefinitionParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertTextMode, Location, LocationLink, ReferenceParams, SymbolInformation}
 
 import java.util
 import java.util.concurrent.{CompletableFuture, TimeUnit}
@@ -135,6 +135,14 @@ class SmartDataLakeTextDocumentService(
     val context = getContext(uri).withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
     val includeDeclaration = Option(params.getContext).exists(_.isIncludeDeclaration)
     navigationEngine.references(context, workspaceManager.visibleFiles(uri), includeDeclaration).toJava: util.List[? <: Location]
+  }.toJava
+
+  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[messages.Either[SymbolInformation, DocumentSymbol]]] = Future {
+    val uri = params.getTextDocument.getUri
+    workspaceManager.visibleFiles(uri).find(_.uri == uri).toList
+      .flatMap(navigationEngine.documentSymbols)
+      .map(symbol => messages.Either.forRight[SymbolInformation, DocumentSymbol](symbol))
+      .toJava
   }.toJava
 
   override def hover(params: HoverParams): CompletableFuture[Hover] = Future {

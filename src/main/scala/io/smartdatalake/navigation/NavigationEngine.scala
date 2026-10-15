@@ -2,9 +2,9 @@ package io.smartdatalake.navigation
 
 import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue, ConfigValueType}
 import io.smartdatalake.context.{References, SDLBContext}
-import io.smartdatalake.context.References.{CONNECTIONS, DATA_OBJECTS}
+import io.smartdatalake.context.References.{ACTIONS, CONNECTIONS, DATA_OBJECTS}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
-import org.eclipse.lsp4j.{Location, Position, Range}
+import org.eclipse.lsp4j.{DocumentSymbol, Location, Position, Range, SymbolKind}
 
 import scala.util.Try
 
@@ -12,7 +12,7 @@ import scala.util.Try
 case class ConfigFile(uri: String, text: String, config: Config):
   lazy val lines: Array[String] = text.split("\\R", -1)
 
-/** Go to definition and find references of dataObjects and connections, across the given files */
+/** Go to definition, find references and outline of dataObjects, actions and connections */
 class NavigationEngine:
 
   /** Where the object referenced (or defined) under the caret is defined */
@@ -57,6 +57,42 @@ class NavigationEngine:
     ).getOrElse(Nil) // unresolved values can't be inspected
 
     search(file.config.root())
+
+  /** Outline of a file: dataObjects, actions and connections, in the order of the file */
+  def documentSymbols(file: ConfigFile): List[DocumentSymbol] =
+    List(DATA_OBJECTS -> SymbolKind.Struct, ACTIONS -> SymbolKind.Function, CONNECTIONS -> SymbolKind.Interface)
+      .flatMap((section, kind) => sectionSymbol(file, section, kind))
+      .sortBy(_.getRange.getStart.getLine)
+
+  private def sectionSymbol(file: ConfigFile, section: String, kind: SymbolKind): Option[DocumentSymbol] =
+    Try(file.config.root().get(section)).toOption.collect { case sectionObject: ConfigObject => sectionObject }.flatMap { sectionObject =>
+      val children = sectionObject.toScala.toList.flatMap { (id, value) =>
+        symbol(file, id, value, kind, detail = objectType(value))
+      }.sortBy(_.getRange.getStart.getLine)
+      symbol(file, section, sectionObject, SymbolKind.Namespace, detail = "").map { sectionSymbol =>
+        sectionSymbol.setChildren(children.toJava)
+        sectionSymbol
+      }
+    }
+
+  /** Symbol of the given value, from its key to the end of its block */
+  private def symbol(file: ConfigFile, name: String, value: ConfigValue, kind: SymbolKind, detail: String): Option[DocumentSymbol] =
+    location(file, value, name).map { keyLocation =>
+      val start = keyLocation.getRange.getStart
+      val afterKey = HoconScanner.lineStart(file.text, start.getLine) + start.getCharacter + name.length
+      // Skip the closing quote of a quoted key
+      val keyOffset = if afterKey < file.text.length && file.text(afterKey) == '"' then afterKey + 1 else afterKey
+      val end = value match
+        case _: ConfigObject => HoconScanner.blockEnd(file.text, keyOffset)
+          .map(offset => Position(HoconScanner.lineOf(file.text, offset), offset - HoconScanner.lineStart(file.text, HoconScanner.lineOf(file.text, offset)) + 1))
+        case _ => None
+      val range = Range(start, end.getOrElse(Position(start.getLine, file.lines(start.getLine).length)))
+      DocumentSymbol(name, kind, range, keyLocation.getRange, detail)
+    }
+
+  private def objectType(value: ConfigValue): String = value match
+    case obj: ConfigObject => Option(obj.get("type")).flatMap(v => Try(v.unwrapped.toString).toOption).getOrElse("")
+    case _ => ""
 
   /** Location of the id on the line where the value is defined */
   private def location(file: ConfigFile, value: ConfigValue, id: String): Option[Location] =
