@@ -1,22 +1,48 @@
 package io.smartdatalake.languageserver.workspace
 
 import io.smartdatalake.context.SDLBContext
-import io.smartdatalake.logging.SDLBLogger
 
-private[workspace] case class Workspace(name: String, contexts: Map[String, SDLBContext], contents: Map[String, String]) extends SDLBLogger:
-    def updateContent(uri: String, newContent: String): Workspace =
-        val updatedContents = contents.updated(uri, newContent)
-        // Update only active context: not all contexts of the workspace
-        val updatedContext = contexts.get(uri)
-            .map(_.withText(newContent))
-            .getOrElse(SDLBContext.fromText(uri, newContent, updatedContents))
-        val updatedContexts = contexts.updated(uri, updatedContext)
-        copy(contexts = updatedContexts, contents = updatedContents)
+/**
+  * Immutable view of all files of the workspace.
+  * Each file sees the last valid content of all the other files, so a file currently being edited
+  * with a syntax error doesn't break the context of the others.
+  * Contexts are computed lazily: they are only (re)built when requested, see [[refreshed]].
+  *
+  * @param texts current text of each file
+  * @param shared last valid text of each file, as seen by the other files
+  * @param contexts cache of computed contexts
+  * @param stale contexts that are not aware of the latest shared contents yet
+  */
+private[workspace] case class Workspace(
+    texts: Map[String, String] = Map.empty,
+    shared: Map[String, String] = Map.empty,
+    contexts: Map[String, SDLBContext] = Map.empty,
+    stale: Set[String] = Set.empty):
 
-    def withAllContentsUpdated: Workspace =
-        // Update all context of the workspace
-        val newContexts = contexts.map { case (uri, context) =>
-            uri -> context.withContents(contents)
-        }
-        trace(s"Updating all contexts (${contexts.size}) of workspace $name")
-        copy(contexts = newContexts)
+    def contains(uri: String): Boolean = texts.contains(uri)
+
+    def updateContent(uri: String, text: String): Workspace =
+        val newShared =
+            if SDLBContext.isConfigValid(text) then shared.updated(uri, text)
+            else if shared.contains(uri) then shared
+            else shared.updated(uri, "")
+        val context = contexts.get(uri)
+            .map(_.withContents(newShared).withText(text))
+            .getOrElse(SDLBContext.fromText(uri, text, newShared))
+        val newStale = if newShared == shared then stale - uri else (stale ++ contexts.keySet) - uri
+        copy(texts = texts.updated(uri, text), shared = newShared, contexts = contexts.updated(uri, context), stale = newStale)
+
+    def remove(uri: String): Workspace =
+        copy(texts = texts - uri, shared = shared - uri, contexts = contexts - uri, stale = (stale ++ contexts.keySet) - uri)
+
+    /** Ensures the context of the given uri exists and is up to date with the shared contents */
+    def refreshed(uri: String): Workspace = texts.get(uri) match
+        case None => this
+        case Some(text) => contexts.get(uri) match
+            case Some(_) if !stale.contains(uri) => this
+            case Some(context) => copy(contexts = contexts.updated(uri, context.withContents(shared).withText(text)), stale = stale - uri)
+            case None => copy(contexts = contexts.updated(uri, SDLBContext.fromText(uri, text, shared)), stale = stale - uri)
+
+object Workspace:
+    def fromTexts(texts: Map[String, String]): Workspace =
+        Workspace(texts, texts.map((uri, text) => uri -> (if SDLBContext.isConfigValid(text) then text else "")))

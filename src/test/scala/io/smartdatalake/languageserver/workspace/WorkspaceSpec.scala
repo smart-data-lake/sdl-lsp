@@ -1,47 +1,53 @@
 package io.smartdatalake.languageserver.workspace
 
 import io.smartdatalake.UnitSpec
-import io.smartdatalake.context.SDLBContext
 
 
 class WorkspaceSpec extends UnitSpec {
     val baseUri = "file://root/conf/local"
-    val workspace = Workspace(baseUri,
-        Map(
-            s"$baseUri/a.conf" -> SDLBContext.EMPTY_CONTEXT,
-            s"$baseUri/b.conf" -> SDLBContext.EMPTY_CONTEXT,
-            s"$baseUri/c.conf" -> SDLBContext.EMPTY_CONTEXT),
-        Map(
-            s"$baseUri/a.conf" -> "",
-            s"$baseUri/b.conf" -> "",
-            s"$baseUri/c.conf" -> "")
-        )
-    
-    "Workspace" should "update only one context with updateContent" in {
-        val updatedWorkspace = workspace.updateContent(s"$baseUri/b.conf", "hello = salut")
-        updatedWorkspace.name should be (baseUri)
-        updatedWorkspace.contexts.size should be (3)
+    val (uriA, uriB, uriC) = (s"$baseUri/a.conf", s"$baseUri/b.conf", s"$baseUri/c.conf")
+    val workspace = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = 2", uriC -> "c = 3"))
 
-        updatedWorkspace.contents(s"$baseUri/a.conf") should be (workspace.contents(s"$baseUri/a.conf"))
-        updatedWorkspace.contents(s"$baseUri/b.conf") should be ("hello = salut")
-        updatedWorkspace.contents(s"$baseUri/c.conf") should be (workspace.contents(s"$baseUri/c.conf"))
-
-        updatedWorkspace.contexts(s"$baseUri/a.conf") should be (SDLBContext.EMPTY_CONTEXT)
-        updatedWorkspace.contexts(s"$baseUri/b.conf") should not be (SDLBContext.EMPTY_CONTEXT)
-        updatedWorkspace.contexts(s"$baseUri/c.conf") should be (SDLBContext.EMPTY_CONTEXT)
+    "Workspace" should "build contexts lazily, each seeing the other files" in {
+        workspace.contexts shouldBe empty
+        val refreshed = workspace.refreshed(uriB)
+        refreshed.contexts.keySet should be (Set(uriB))
+        val config = refreshed.contexts(uriB).rootConfig
+        config.getInt("a") should be (1)
+        config.getInt("b") should be (2)
+        config.getInt("c") should be (3)
     }
 
-    it should "update all contexts with withAllContentsUpdated" in {
-        val updatedWorkspace = workspace.updateContent(s"$baseUri/b.conf", "hello = salut").withAllContentsUpdated
-        updatedWorkspace.name should be (baseUri)
-        updatedWorkspace.contexts.size should be (3)
+    it should "update the edited context and mark the others as stale" in {
+        val updated = workspace.refreshed(uriA).refreshed(uriC).updateContent(uriB, "b = 20")
+        updated.texts(uriB) should be ("b = 20")
+        updated.contexts(uriB).rootConfig.getInt("b") should be (20)
+        updated.stale should be (Set(uriA, uriC))
 
-        updatedWorkspace.contents(s"$baseUri/a.conf") should be (workspace.contents(s"$baseUri/a.conf"))
-        updatedWorkspace.contents(s"$baseUri/b.conf") should be ("hello = salut")
-        updatedWorkspace.contents(s"$baseUri/c.conf") should be (workspace.contents(s"$baseUri/c.conf"))
+        val refreshed = updated.refreshed(uriA)
+        refreshed.contexts(uriA).rootConfig.getInt("b") should be (20)
+        refreshed.stale should be (Set(uriC))
+    }
 
-        updatedWorkspace.contexts(s"$baseUri/a.conf") should not be (SDLBContext.EMPTY_CONTEXT)
-        updatedWorkspace.contexts(s"$baseUri/b.conf") should not be (SDLBContext.EMPTY_CONTEXT)
-        updatedWorkspace.contexts(s"$baseUri/c.conf") should not be (SDLBContext.EMPTY_CONTEXT)
+    it should "share only the last valid content of a file with the other files" in {
+        val updated = workspace.updateContent(uriB, "b = {").refreshed(uriA)
+        updated.texts(uriB) should be ("b = {")
+        updated.shared(uriB) should be ("b = 2")
+        updated.stale shouldBe empty
+        updated.contexts(uriA).rootConfig.getInt("b") should be (2)
+        updated.contexts(uriA).isConfigCompleted shouldBe true
+    }
+
+    it should "share an empty content for files invalid from the start" in {
+        val ws = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = {"))
+        ws.shared(uriB) should be ("")
+        ws.refreshed(uriA).contexts(uriA).rootConfig.getInt("a") should be (1)
+    }
+
+    it should "remove a file and mark the others as stale" in {
+        val updated = workspace.refreshed(uriA).refreshed(uriB).remove(uriB)
+        updated.contains(uriB) shouldBe false
+        updated.stale should be (Set(uriA))
+        updated.refreshed(uriA).contexts(uriA).rootConfig.hasPath("b") shouldBe false
     }
 }

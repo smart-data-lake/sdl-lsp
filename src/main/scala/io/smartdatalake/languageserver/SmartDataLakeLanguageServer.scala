@@ -8,11 +8,12 @@ import org.eclipse.lsp4j.*
 import java.util.concurrent.CompletableFuture
 import scala.concurrent.{ExecutionContext, Future}
 import io.smartdatalake.context.SDLBContext
-import workspace.WorkspaceContext
+import workspace.WorkspaceManager
 import io.smartdatalake.modules.Configurator
 
 class SmartDataLakeLanguageServer(
-  private val textDocumentService: TextDocumentService & WorkspaceContext,
+  private val textDocumentService: TextDocumentService,
+  private val workspaceManager: WorkspaceManager,
   private val workspaceService: WorkspaceService,
   private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware {
   
@@ -32,12 +33,12 @@ class SmartDataLakeLanguageServer(
   }
 
   private def initializeWorkspaces(initializeParams: InitializeParams): Unit =
-    val rootUri = Option(initializeParams).flatMap(_.getWorkspaceFolders
-      .toScala
-      .headOption
-      .map(_.getUri))
+    val params = Option(initializeParams)
+    val rootUri = params.flatMap(p => Option(p.getWorkspaceFolders))
+      .flatMap(_.toScala.headOption.map(_.getUri))
+      .orElse(params.flatMap(p => Option(p.getRootUri)))
       .getOrElse("")
-    val lspConfig = textDocumentService.initializeWorkspaces(rootUri)
+    val lspConfig = workspaceManager.initialize(rootUri)
     configurator.configureApp(lspConfig)
 
 

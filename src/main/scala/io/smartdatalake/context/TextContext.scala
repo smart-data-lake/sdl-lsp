@@ -21,8 +21,9 @@ case class TextContext private (uri: String, originalText: String, workspaceUriT
     val newConfigOption = HoconParser.parse(fullText)
     val isConfigCompleted = newConfigOption.isDefined
     val newConfig = newConfigOption.getOrElse(HoconParser.EMPTY_CONFIG)
+    // While the text is invalid, keep the last valid config but always locate the caret in the current text
     if newConfig == HoconParser.EMPTY_CONFIG then
-      copy(originalText=newText, isConfigCompleted=isConfigCompleted)
+      copy(originalText=newText, configText=newConfigText, isConfigCompleted=isConfigCompleted)
     else
       val resolvedConfig = Try(newConfig.resolve()).getOrElse(newConfig)
       copy(originalText=newText, configText=newConfigText, rootConfig=resolvedConfig, isConfigCompleted=isConfigCompleted)

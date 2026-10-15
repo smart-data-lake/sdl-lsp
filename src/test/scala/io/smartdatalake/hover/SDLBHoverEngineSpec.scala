@@ -16,7 +16,12 @@ class SDLBHoverEngineSpec extends UnitSpec {
       """Configuration of a custom Spark-DataFrame transformation between many inputs and many outputs (n:m).
         |Define a transform function which receives a map of input DataObjectIds with DataFrames and a map of options and has
         |to return a map of output DataObjectIds with DataFrames, see also trait[[CustomDfsTransformer]] .""".stripMargin.replace("\r\n", "\n")
-    hoverEngine.generateHoveringInformation(context).getContents.getRight.getValue shouldBe expected
+    hoverEngine.generateHoveringInformation(context).value.getContents.getRight.getValue shouldBe expected
+  }
+
+  it should "not provide any hovering information without description" in {
+    val context = SDLBContext.fromText("actions {\n\n}").withCaretPosition(2, 0)
+    hoverEngine.generateHoveringInformation(context) shouldBe None
   }
 
 

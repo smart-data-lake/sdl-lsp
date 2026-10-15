@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.smartdatalake.completion.ai.model.{ModelClient, GeminiClient}
 import io.smartdatalake.completion.ai.{AICompletionEngine, AICompletionEngineImpl}
-import io.smartdatalake.languageserver.workspace.WorkspaceContext
+import io.smartdatalake.languageserver.workspace.WorkspaceManager
 import io.smartdatalake.context.SDLBContext
 import scala.util.Try
 
@@ -33,10 +33,11 @@ trait AppModule:
   lazy val serviceExecutionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(serviceExecutorService)
   lazy given ExecutionContext = serviceExecutionContext
 
-  lazy val textDocumentService: TextDocumentService & WorkspaceContext & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine)
+  lazy val workspaceManager: WorkspaceManager = new WorkspaceManager
+  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
   lazy val configurator: Configurator = new Configurator(aiCompletionEngine)
-  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceService, configurator)
+  lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)
 
 class Configurator(aiCompletionEngine: AICompletionEngineImpl):
   def configureApp(lspConfig: SDLBContext): Unit =

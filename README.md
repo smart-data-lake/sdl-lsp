@@ -75,130 +75,42 @@ Work in progress, should be released soon. Stay tuned!
 
 ## LSP Server Configuration
 
-The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define workspace behavior and AI-assisted features.
+The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define the workspace and AI-assisted features.
 
 **Hint:** You can generate a default template of the config file using the LSP itself. See screnshot below: ![screenshot of triggering default template of the LSP config file in LSP4IJ](resources/img/default-template-lsp-config.png)
 
 ### Workspace Configuration
 
-The workspace configuration determines how files are grouped and processed by the LSP server. This is particularly important for features like auto-completion and references that need context from multiple files.
+The workspace determines which files are processed together by the LSP server. This matters for features like auto-completion that need context from multiple files, e.g. suggesting the ids of dataObjects defined in another file.
+
+Like the `--config` option of the SDLB command line, `configPaths` lists the files and directories forming the workspace, comma-separated and relative to the project root. Directories are searched recursively for `.conf` files.
+
+```hocon
+configPaths = "conf,env/local.conf"
+```
+
+**Example structure:**
+
+```plaintext
+project/
+├── .sdlb/
+│   └── lsp-config.conf
+├── conf/                # Part of the workspace, including all subfolders
+│   ├── pipeline1/
+│   │   └── extract.conf
+│   └── common.conf
+└── env/
+    ├── local.conf       # Part of the workspace
+    └── prod.conf        # Not in the workspace
+```
+
+In this example, `extract.conf`, `common.conf` and `local.conf` all see each other's content. Files outside `configPaths`, like `prod.conf`, can still be edited with completion and hovering, but are handled in isolation: they neither see nor affect the workspace files.
+
+If `configPaths` is not set, all `.conf` files of the project are part of the workspace (hidden folders and `target` are skipped).
 
 Please note that **you need to restart the LSP Server if you want to apply the changes of your LSP config file.**
 
-You can choose between four workspace types:
-
-#### 1. RootWorkspace
-
-Creates a new workspace for each direct subfolder of a specified root folder, plus the root folder itself and the root URI.
-
-```hocon
-workspaceType = RootWorkspace
-workspaceParameters = "conf"
-```
-
-**Example structure:**
-
-```plaintext
-project/
-├── .sdlb/
-│   └── lsp-config.conf
-├── conf/               # Root folder specified in parameters
-│   ├── pipeline1/      # Workspace 1
-│   │   ├── extract.conf
-│   │   └── transform.conf
-│   ├── pipeline2/      # Workspace 2
-│   │   ├── extract.conf
-│   │   └── load.conf
-│   └── common.conf     # Part of root workspace
-└── other/
-    └── files.txt
-```
-
-In this example:
-
-* The `pipeline1` folder and its files form a workspace
-* The `pipeline2` folder and its files form another workspace
-* The `common.conf` file is in its own workspace
-* Files outside the `conf` folder are not included in these workspaces
-
-#### 2. ActiveWorkspace
-
-Creates two workspaces: one "active" workspace containing all files in specified paths, and another workspace for all other files.
-
-```hocon
-workspaceType = ActiveWorkspace
-workspaceParameters = "conf/local,conf/airport.conf,conf/trainstation.conf"
-```
-
-**Example structure:**
-
-```plaintext
-project/
-├── .sdlb/
-│   └── lsp-config.conf
-└── conf/
-    ├── local/          # Part of active workspace
-    │   ├── dev.conf
-    │   └── test.conf
-    ├── prod/           # Not in active workspace
-    │   └── prod.conf
-    ├── airport.conf    # Part of active workspace
-    ├── trainstation.conf # Part of active workspace
-    └── mall.conf       # Not in active workspace
-```
-
-In this example:
-
-* The active workspace contains `conf/local/dev.conf`, `conf/local/test.conf`, `conf/airport.conf`, and `conf/trainstation.conf`
-* All other files are in a separate workspace
-
-#### 3. SingleWorkspace
-
-All files are included in a single workspace.
-
-```hocon
-workspaceType = SingleWorkspace
-```
-
-**Example structure:**
-
-```plaintext
-project/
-├── .sdlb/
-│   └── lsp-config.conf
-└── conf/
-    ├── pipeline1/
-    │   └── extract.conf
-    ├── pipeline2/
-    │   └── load.conf
-    └── common.conf
-```
-
-In this example, all `.conf` files are in a single workspace, regardless of their location.
-
-#### 4. NoWorkspace
-
-Each file is treated as its own isolated workspace.
-
-```hocon
-workspaceType = NoWorkspace
-```
-
-**Example structure:**
-
-```plaintext
-project/
-├── .sdlb/
-│   └── lsp-config.conf
-└── conf/
-    ├── pipeline1/
-    │   └── extract.conf  # Isolated workspace
-    ├── pipeline2/
-    │   └── load.conf     # Isolated workspace
-    └── common.conf       # Isolated workspace
-```
-
-In this example, each file is in its own workspace and has no awareness of other files.
+**Hint:** `configPaths` replaces the former `workspaceType` and `workspaceParameters` settings. A configuration using `workspaceType = ActiveWorkspace` is still understood: its `workspaceParameters` are used as `configPaths`.
 
 ### AI-Assisted Features
 
@@ -250,7 +162,7 @@ Don't forget to **restart the LSP Server** if you want to apply the customized p
 To be able to build this project, you will need:
 
 * maven
-* java 21 or newer
+* java 17 or newer
 
 ### Building
 
