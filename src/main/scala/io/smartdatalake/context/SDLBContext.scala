@@ -13,8 +13,8 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
 
-  def withContents(newContents: Map[String, String]): SDLBContext =
-    copy(textContext = textContext.withContents(newContents))
+  def withOthersConfig(othersConfig: Config): SDLBContext =
+    copy(textContext = textContext.withOthersConfig(othersConfig))
 
   def withCaretPosition(originalLine: Int, originalCol: Int): SDLBContext =
     val TextContext(_, originalText, _, configText, _, _) = textContext
@@ -41,12 +41,16 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
 object SDLBContext {
   val EMPTY_CONTEXT: SDLBContext = SDLBContext(EMPTY_TEXT_CONTEXT, List(), "")
 
-  def fromText(uri: String, originalText: String, workspaceUriToContents: Map[String, String]): SDLBContext =
-    SDLBContext(TextContext.create(uri, originalText, workspaceUriToContents), List(), "")
+  /** @param othersConfig unresolved config of the other files of the workspace */
+  def fromText(uri: String, originalText: String, othersConfig: Config = HoconParser.EMPTY_CONFIG): SDLBContext =
+    SDLBContext(TextContext.create(uri, originalText, othersConfig), List(), "")
 
-  def fromText(originalText: String): SDLBContext = fromText("", originalText, Map.empty)
+  def fromText(originalText: String): SDLBContext = fromText("", originalText)
 
-  def isConfigValid(text: String): Boolean = HoconParser.parse(text).isDefined
+  /** Unresolved config of the given text, None if the text is invalid */
+  def parse(uri: String, text: String): Option[Config] = HoconParser.parse(text, uri)
+
+  val EMPTY_CONFIG: Config = HoconParser.EMPTY_CONFIG
 
 }
 

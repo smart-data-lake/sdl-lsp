@@ -32,7 +32,7 @@ class WorkspaceSpec extends UnitSpec {
     it should "share only the last valid content of a file with the other files" in {
         val updated = workspace.updateContent(uriB, "b = {").refreshed(uriA)
         updated.texts(uriB) should be ("b = {")
-        updated.shared(uriB) should be ("b = 2")
+        updated.parsed(uriB).getInt("b") should be (2)
         updated.stale shouldBe empty
         updated.contexts(uriA).rootConfig.getInt("b") should be (2)
         updated.contexts(uriA).isConfigCompleted shouldBe true
@@ -40,7 +40,7 @@ class WorkspaceSpec extends UnitSpec {
 
     it should "share an empty content for files invalid from the start" in {
         val ws = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = {"))
-        ws.shared(uriB) should be ("")
+        ws.parsed(uriB).isEmpty shouldBe true
         ws.refreshed(uriA).contexts(uriA).rootConfig.getInt("a") should be (1)
     }
 
@@ -49,5 +49,26 @@ class WorkspaceSpec extends UnitSpec {
         updated.contains(uriB) shouldBe false
         updated.stale should be (Set(uriA))
         updated.refreshed(uriA).contexts(uriA).rootConfig.hasPath("b") shouldBe false
+    }
+
+    it should "resolve substitutions across files and give priority to the current file" in {
+        val ws = Workspace.fromTexts(Map(
+            uriA -> "basePath = /data\nfeed = from-a",
+            uriB -> "dataObjects { obj { path = ${basePath}\"/obj\" } }\nfeed = from-b"
+        ))
+        val configB = ws.refreshed(uriB).contexts(uriB).rootConfig
+        configB.getString("dataObjects.obj.path") should be ("/data/obj")
+        configB.getString("feed") should be ("from-b")
+        ws.refreshed(uriA).contexts(uriA).rootConfig.getString("feed") should be ("from-a")
+    }
+
+    it should "keep the config usable with unresolved substitutions" in {
+        val ws = Workspace.fromTexts(Map(uriA -> "a = ${missing}\nb = 2")).refreshed(uriA)
+        ws.contexts(uriA).rootConfig.getInt("b") should be (2)
+    }
+
+    it should "keep track of the file each value comes from" in {
+        val ws = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = 2")).refreshed(uriB)
+        ws.contexts(uriB).rootConfig.getValue("a").origin().description() should include (uriA)
     }
 }

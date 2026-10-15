@@ -1,6 +1,6 @@
 package io.smartdatalake.context.hocon
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 
 
 import scala.annotation.tailrec
@@ -20,8 +20,9 @@ private[context] object HoconParser:
    * @param text in hocon format
    * @return parsed text in config format
    */
-  def parse(text: String): Option[Config] =
-    Try(ConfigFactory.parseString(text)).toOption
+  def parse(text: String, originDescription: String = ""): Option[Config] =
+    val options = ConfigParseOptions.defaults().setOriginDescription(Option(originDescription).filter(_.nonEmpty).orNull)
+    Try(ConfigFactory.parseString(text, options)).toOption
 
   val EMPTY_CONFIG: Config = ConfigFactory.parseString("")
 

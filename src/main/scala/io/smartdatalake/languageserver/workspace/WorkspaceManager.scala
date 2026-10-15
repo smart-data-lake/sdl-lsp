@@ -73,7 +73,7 @@ class WorkspaceManager extends SDLBLogger:
     /** To be called when a file is opened or changed */
     def updateContent(uri: String, text: String): Unit =
         if isLSPConfigUri(uri) then synchronized {
-            state = state.copy(lspConfig = SDLBContext.fromText(uri, text, Map.empty))
+            state = state.copy(lspConfig = SDLBContext.fromText(uri, text))
         }
         else synchronized {
             state =
@@ -82,7 +82,7 @@ class WorkspaceManager extends SDLBLogger:
                 else
                     val context = state.isolated.get(uri)
                         .map(_.withText(text))
-                        .getOrElse(SDLBContext.fromText(uri, text, Map.empty))
+                        .getOrElse(SDLBContext.fromText(uri, text))
                     state.copy(isolated = state.isolated.updated(uri, context))
         }
 
@@ -110,7 +110,7 @@ class WorkspaceManager extends SDLBLogger:
             case Some(text) =>
                 val uri = normalizeURI(rootUri, file.toUri.toString)
                 info(s"Loading LSP config from $uri")
-                SDLBContext.fromText(uri, text, Map.empty)
+                SDLBContext.fromText(uri, text)
             case None =>
                 info(s"No LSP config found at $file, using default settings")
                 SDLBContext.EMPTY_CONTEXT
