@@ -36,7 +36,8 @@ object HoconSyntaxParser:
     private def error(message: String, token: Token): Unit = error(message, token.start, token.end)
 
     private def skip(kinds: TokenKind*): Unit = while currentKind.exists(kinds.contains) do position += 1
-    private def kindAfter(kinds: TokenKind*): Option[TokenKind] = tokens.drop(position).find(token => !kinds.contains(token.kind)).map(_.kind)
+    /** First token from the given index whose kind is not one of the given ones. Looks ahead by index: copying the tokens would make parsing quadratic */
+    private def tokenFrom(index: Int, skipped: TokenKind*): Option[Token] = tokens.lift(tokens.indexWhere(token => !skipped.contains(token.kind), index))
 
     private def isKeyToken(kind: TokenKind) = kind == Unquoted || kind == QuotedString
     private def isValueStart(kind: TokenKind) = kind match
@@ -94,7 +95,7 @@ object HoconSyntaxParser:
     /** `include "file"` or `include required(file("file"))` */
     private def parseInclude(): Option[IncludeNode] =
       val keyword = tokens(position)
-      val target = tokens.drop(position + 1).dropWhile(_.kind == Whitespace).headOption
+      val target = tokenFrom(position + 1, Whitespace)
       target.filter(target => keyword.kind == Unquoted && keyword.text == "include" && target.start > keyword.end &&
         (target.kind == QuotedString || INCLUDE_TARGET.matches(text.substring(target.start, lineEnd(target.start))))
       ).map { target =>
@@ -113,7 +114,7 @@ object HoconSyntaxParser:
       val keyEnd = tokens(position - 1).end
       skip(Whitespace)
       // The opening brace or the separator may be on the next line
-      if currentKind.contains(Newline) && kindAfter(Whitespace, Newline).exists(kind => kind == OpenBrace || isSeparator(kind)) then skip(Whitespace, Newline)
+      if currentKind.contains(Newline) && tokenFrom(position, Whitespace, Newline).exists(token => token.kind == OpenBrace || isSeparator(token.kind)) then skip(Whitespace, Newline)
       currentKind match
         case Some(kind) if isSeparator(kind) =>
           val separator = advance()
