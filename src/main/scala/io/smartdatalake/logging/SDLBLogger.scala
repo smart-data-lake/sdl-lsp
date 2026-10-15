@@ -16,7 +16,7 @@ trait SDLBLogger:
 
     private[logging] def anonymizeMessage(message: String, anonymize: Boolean = true): String =
         Option.when(anonymize) {
-            patterns.foldLeft(message) { case (msg, (key, pattern)) =>
+            patterns.foldLeft(message) { case (msg, (_, pattern)) =>
                 msg.replaceAll(pattern, "[REDACTED]")
             }
         }.getOrElse(message)

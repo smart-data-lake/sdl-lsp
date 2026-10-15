@@ -23,11 +23,13 @@
     <java.version>17</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <encoding>UTF-8</encoding>
-    <scala.version>3.3.4</scala.version> <!-- Scala 2.12 not working because of copies of annotations issues -->
-    <lsp4j.version>0.21.0</lsp4j.version>
-    <typesafe.config.version>1.4.3</typesafe.config.version>
-    <ujson.version>3.1.2</ujson.version>
-    <logback.version>1.4.12</logback.version>
+    <scala.version>3.3.8</scala.version> <!-- Scala 2.12 not working because of copies of annotations issues -->
+    <lsp4j.version>0.24.0</lsp4j.version>
+    <typesafe.config.version>1.4.9</typesafe.config.version>
+    <ujson.version>4.4.3</ujson.version>
+    <logback.version>1.5.38</logback.version>
+    <circe.version>0.14.17</circe.version>
+    <sttp.version>3.11.0</sttp.version>
   </properties>
 
   <repositories>
@@ -83,35 +85,35 @@
     <dependency>
         <groupId>io.circe</groupId>
         <artifactId>circe-core_3</artifactId>
-        <version>0.15.0-M1</version>
+        <version>${circe.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.circe/circe-parser -->
     <dependency>
         <groupId>io.circe</groupId>
         <artifactId>circe-parser_3</artifactId>
-        <version>0.15.0-M1</version>
+        <version>${circe.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.circe/circe-generic -->
     <dependency>
         <groupId>io.circe</groupId>
         <artifactId>circe-generic_3</artifactId>
-        <version>0.15.0-M1</version>
+        <version>${circe.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.softwaremill.sttp.client3/core -->
     <dependency>
         <groupId>com.softwaremill.sttp.client3</groupId>
         <artifactId>core_3</artifactId>
-        <version>3.10.3</version>
+        <version>${sttp.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.softwaremill.sttp.client3/circe -->
     <dependency>
         <groupId>com.softwaremill.sttp.client3</groupId>
         <artifactId>circe_3</artifactId>
-        <version>3.10.3</version>
+        <version>${sttp.version}</version>
     </dependency>
 
     <!-- Logging -->
@@ -127,7 +129,7 @@
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_3</artifactId>
-      <version>3.2.10</version>
+      <version>3.2.20</version>
       <scope>test</scope>
     </dependency>
 
@@ -142,7 +144,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.4.0</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -156,7 +158,7 @@
         <!-- see http://davidb.github.com/scala-maven-plugin -->
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>4.5.4</version>
+        <version>4.9.10</version>
         <configuration>
           <args>
             <arg>-deprecation</arg>
@@ -177,7 +179,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.4</version>
+        <version>3.8.0</version>
         <configuration>
             <descriptorRefs>
                 <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -201,7 +203,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.7</version>
+        <version>3.5.6</version>
         <configuration>
           <skipTests>true</skipTests>
         </configuration>
@@ -210,7 +212,7 @@
       <plugin>
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
-        <version>2.0.0</version>
+        <version>2.2.0</version>
         <configuration>
           <reportsDirectory>
             ${project.build.directory}/scalatest-reports
@@ -233,7 +235,7 @@
       <plugin>
       <groupId>org.jacoco</groupId>
       <artifactId>jacoco-maven-plugin</artifactId>
-      <version>0.8.11</version>
+      <version>0.8.15</version>
       <executions>
         <execution>
           <id>prepare-agent</id>
