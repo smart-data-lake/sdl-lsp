@@ -7,6 +7,8 @@ import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import io.smartdatalake.formatting.{FormattingStrategy, FormattingStrategyFactory}
 import io.smartdatalake.hover.SDLBHoverEngine
 import io.smartdatalake.logging.SDLBLogger
+import io.smartdatalake.utils.LruCache
+import com.typesafe.config.ConfigRenderOptions
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
@@ -15,7 +17,6 @@ import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, Co
 
 import java.util
 import java.util.concurrent.{CompletableFuture, TimeUnit}
-import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -32,7 +33,10 @@ class SmartDataLakeTextDocumentService(
 
   // The client type is only known after the initialize request
   private def formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
-  private val precomputedCompletions: TrieMap[String, Future[String]] = TrieMap.empty
+  // AI completions of the most recent completion requests, keyed by insert text, parent path and hash of the context
+  private val aiCompletions = LruCache[(String, String, Int), Future[String]](maxEntries = 100)
+  // Context of the last completion request, used when resolving one of its items
+  @volatile private var lastAIContext: String = ""
   private val AI_COMPLETION_TIMEOUT = 3.seconds
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = Future {
@@ -46,8 +50,11 @@ class SmartDataLakeTextDocumentService(
       val formattedCompletionItems = completionItems.map(formattingStrategy.formatCompletionItem(_, caretContext, params))
       
       if aiCompletionEngine.isEnabled then
-        precomputedCompletions.clear()
-        formattedCompletionItems.take(3).foreach(generateAICompletions)
+        // Rendered once per request, and only when needed
+        val aiContext = caretContext.textContext.rootConfig.root().render(ConfigRenderOptions.concise())
+        lastAIContext = aiContext
+        // Precompute the most likely items: resolving them is then immediate
+        formattedCompletionItems.take(3).foreach(item => tabStopsData(item).foreach(aiInsertText(item.getInsertText, _, aiContext)))
       
       Left(formattedCompletionItems.toJava).toJava
   }.toJava
@@ -65,16 +72,21 @@ class SmartDataLakeTextDocumentService(
       List.empty[CompletionItem]
 
 
-  private def generateAICompletions(item: CompletionItem): Unit =
-    Option(item.getData).map(_.toString).flatMap(CompletionData.fromJson).filter(_.withTabStops).foreach { data =>
-      val result = aiCompletionEngine
-        .generateInsertTextWithTabStops(item.getInsertText, data.parentPath, data.context)
-        .recover {
-          case ex: Exception =>
-            debug(s"AI inference error: ${ex.getMessage}")
-            item.getInsertText // Fallback to original text
+  private def tabStopsData(item: CompletionItem): Option[CompletionData] =
+    Option(item.getData).map(_.toString).flatMap(CompletionData.fromJson).filter(_.withTabStops)
+
+  /** AI insert text, computed only once per insert text, parent path and context. Falls back to the given insert text */
+  private def aiInsertText(insertText: String, data: CompletionData, aiContext: String): Future[String] =
+    val key = (insertText, data.parentPath, aiContext.hashCode)
+    aiCompletions.getOrCompute(key) {
+      val result = aiCompletionEngine.generateInsertTextWithTabStops(insertText, data.parentPath, aiContext)
+        .recover { case NonFatal(ex) =>
+          debug(s"AI inference error: ${ex.getMessage}")
+          insertText
         }
-      precomputedCompletions += (item.getInsertText -> result)
+      // Don't keep failures: the next request retries
+      result.foreach(text => if text == insertText then aiCompletions.remove(key))
+      result
     }
 
 
@@ -94,23 +106,14 @@ class SmartDataLakeTextDocumentService(
     workspaceManager.save(didSaveTextDocumentParams.getTextDocument.getUri)
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] =
-    val tabStopsData = Option.when(aiCompletionEngine.isEnabled)(completionItem.getData).flatMap(Option(_))
-      .map(_.toString)
-      .flatMap(CompletionData.fromJson)
-      .filter(_.withTabStops)
-    tabStopsData match
+    Option.when(aiCompletionEngine.isEnabled)(completionItem).flatMap(tabStopsData) match
       case None => CompletableFuture.completedFuture(completionItem)
       case Some(data) =>
         val insertText = completionItem.getInsertText
-        val aiInsertText = precomputedCompletions
-          .getOrElse(insertText, aiCompletionEngine.generateInsertTextWithTabStops(insertText, data.parentPath, data.context))
-          .recover { case NonFatal(ex) =>
-            debug(s"Error during AI completion: ${ex.getMessage}")
-            insertText
-          }
+        val aiInsertTextFuture = aiInsertText(insertText, data, lastAIContext)
         // If the AI is too slow, keep the default insert text
         val timeout = CompletableFuture.supplyAsync(() => insertText, CompletableFuture.delayedExecutor(AI_COMPLETION_TIMEOUT.toMillis, TimeUnit.MILLISECONDS)).toScala
-        Future.firstCompletedOf(List(aiInsertText, timeout)).map { newInsertText =>
+        Future.firstCompletedOf(List(aiInsertTextFuture, timeout)).map { newInsertText =>
           if newInsertText != insertText then
             completionItem.setInsertText(newInsertText)
             completionItem.setInsertTextMode(InsertTextMode.AdjustIndentation)
