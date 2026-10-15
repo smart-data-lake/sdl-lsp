@@ -83,6 +83,12 @@ class SchemaReaderSpec extends UnitSpec {
     schemaReader.retrieveDescription(context).take(60) shouldBe "This[[Action]] transforms data between many input and output"
   }
 
+  it should "find the description of the type given as value of a type attribute" in {
+    schemaReader.retrieveDescription(initialContext.withCaretPosition(3, 14)) should startWith ("This[[Action]] copies data between an input and output DataObject")
+    schemaReader.retrieveDescription(initialContext.withCaretPosition(7, 16)) should startWith ("Configuration of a custom GenericDataFrame transformation")
+    schemaReader.retrieveDescription(SDLBContext.fromText("actions {\n  a {\n    type = UnknownAction\n  }\n}").withCaretPosition(3, 14)) shouldBe empty
+  }
+
   it should "find description of metadata" in {
     val context = initialContext.withCaretPosition(31, 10)
     schemaReader.retrieveDescription(context) shouldBe "Additional metadata for an Action"

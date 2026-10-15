@@ -56,7 +56,7 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
   /** Names of the built-in types of the objects of a section, e.g. CopyAction for actions */
   def typeNames(section: String): Set[String] =
     createGlobalSchemaContext.updateByName(section).map(_.generateSchemaSuggestions) match
-      case Some(TemplateCollection(templates, _)) => templates.map(_._1).toSet
+      case Some(TemplateCollection(templates, _)) => templates.map(_.name).toSet
       case _ => Set.empty
 
   private[schema] def createGlobalSchemaContext: SchemaContext =
@@ -64,15 +64,20 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
     SchemaContext(currentSchema, currentSchema)
 
   override def retrieveAttributeOrTemplateCollection(context: SDLBContext): AttributeCollection | TemplateCollection = context.parentPath.lastOption match
-    case Some("type") =>
-      // Suggest the values of the type attribute: the type currently written must not narrow the schema
-      val schemaContext = navigate(context.parentPath, context.textContext.rootConfig.root(), bestEffort = true).getOrElse(createGlobalSchemaContext)
-      schemaContext.generateSchemaSuggestionsForAttributeType
+    case Some("type") => typeValues(context)
     case _ => retrieveSchemaContext(context, withWordInPath = false) match
       case None => AttributeCollection(Iterable.empty)
       case Some(schemaContext) => schemaContext.generateSchemaSuggestions
+  /** Values of the type attribute: the type currently written must not narrow the schema */
+  private def typeValues(context: SDLBContext): AttributeCollection =
+    val schemaContext = navigate(context.parentPath, context.textContext.rootConfig.root(), bestEffort = true).getOrElse(createGlobalSchemaContext)
+    schemaContext.generateSchemaSuggestionsForAttributeType
+
   override def retrieveDescription(context: SDLBContext): String = if isWordMeaningless(context.word) then "" else
-    retrieveSchemaContext(context, withWordInPath = true) match
+    // On the value of a type attribute: the description of that type, as given when completing it
+    if context.parentPath.lastOption.contains("type") then
+      typeValues(context).attributes.find(_.name == context.word).map(_.description).getOrElse("")
+    else retrieveSchemaContext(context, withWordInPath = true) match
       case None =>
         debug("No schema could be retrieved")
         ""

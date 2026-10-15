@@ -2,9 +2,9 @@ package io.smartdatalake.completion
 
 import com.typesafe.config.{ConfigObject, ConfigValue}
 import io.smartdatalake.context.{ContextAdvisor, ContextSuggestion, SDLBContext}
-import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
+import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, Template, TemplateCollection}
 import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReader, TemplateType}
-import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, InsertTextFormat}
+import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, InsertTextFormat, MarkupContent, MarkupKind}
 
 import io.smartdatalake.logging.SDLBLogger
 
@@ -29,8 +29,8 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       case _ => attributes
     items.map(createCompletionItem).toList
 
-  private[completion] def generateTemplateSuggestions(templates: Iterable[(String, Iterable[SchemaItem])], templateType: TemplateType, context: SDLBContext): List[CompletionItem] =
-    templates.map { case (actionType, attributes) =>
+  private[completion] def generateTemplateSuggestions(templates: Iterable[Template], templateType: TemplateType, context: SDLBContext): List[CompletionItem] =
+    templates.map { case Template(actionType, _, attributes) =>
       val completionItem = new CompletionItem()
       completionItem.setLabel(actionType.toLowerCase)
       completionItem.setDetail("template")
@@ -65,6 +65,7 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     val completionItem = new CompletionItem()
     completionItem.setLabel(item.name)
     completionItem.setDetail(s"${if item.required then "required" else ""} ${item.itemType.name}".trim())
+    setDescription(completionItem, item.description)
     
     val valuePart = 
       if Set(ItemType.OBJECT, ItemType.TYPE_VALUE).contains(item.itemType) then 
@@ -76,6 +77,11 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
     completionItem.setKind(CompletionItemKind.Snippet)
     completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
     completionItem
+
+  /** Shown by the client next to the selected item, like the hover of the attribute or type value */
+  private def setDescription(completionItem: CompletionItem, description: String): Unit =
+    if !description.isBlank then
+      completionItem.setDocumentation(MarkupContent(MarkupKind.MARKDOWN, description))
 
   private def createCompletionItem(item: ContextSuggestion): CompletionItem =
     val completionItem = new CompletionItem()
