@@ -4,4 +4,5 @@ import scala.concurrent.Future
 
 trait ModelClient:
     def isEnabled: Boolean
-    def completeAsync(prompt: String, model: String = ""): Future[String]
+    /** @param model model name, None to use the default model of the client */
+    def completeAsync(prompt: String, model: Option[String] = None): Future[String]

@@ -114,11 +114,22 @@ Please note that **you need to restart the LSP Server if you want to apply the c
 
 ### AI-Assisted Features
 
-The SDL LSP server includes AI-assisted features to improve code completion and suggestions. To use these features:
+The SDL LSP server includes AI-assisted features to improve code completion and suggestions. It works with any endpoint implementing the OpenAI chat completions API (OpenAI, Gemini, Mistral, a local Ollama server, ...). By default, Gemini is used. To use these features:
 
-1. Obtain a Google API key from [Google AI Studio](https://aistudio.google.com)
-2. Configure your LSP client to include the environment variable `GOOGLE_API_KEY` with your API key. See screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
-3. Optionally customize the AI prompt in your `.sdlb/lsp-config.conf` file
+1. Obtain an API key from your provider, e.g. a Google API key from [Google AI Studio](https://aistudio.google.com) for the default Gemini setup
+2. Configure your LSP client to include the environment variable `AI_API_KEY` with your API key (`GOOGLE_API_KEY` is supported as well). See screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
+3. Optionally choose another provider or model, and customize the AI prompt in your `.sdlb/lsp-config.conf` file
+
+#### Choosing the AI provider and model
+
+```hocon
+# Base URL of the OpenAI compatible API, default: https://generativelanguage.googleapis.com/v1beta/openai
+aiBaseUrl = "https://api.openai.com/v1"
+# Model name, default: gemini-3.5-flash-lite
+aiModel = "gpt-5-mini"
+```
+
+For a local model, no API key is needed as soon as `aiBaseUrl` is set, e.g. with Ollama: `aiBaseUrl = "http://localhost:11434/v1"` and `aiModel = "qwen3:8b"`. Answers must arrive within 3 seconds, so prefer small and fast models.
 
 #### Customizing AI Prompts
 
