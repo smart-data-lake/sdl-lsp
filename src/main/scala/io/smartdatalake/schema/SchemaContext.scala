@@ -1,7 +1,7 @@
 package io.smartdatalake.schema
 
 import io.circe.{Json, JsonObject}
-import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
+import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, Template, TemplateCollection}
 import io.smartdatalake.schema.SchemaKeywords.*
 
 import scala.annotation.tailrec
@@ -48,8 +48,8 @@ private[schema] case class SchemaContext(private val globalSchema: Json, localSc
   def generateSchemaSuggestionsForAttributeType: AttributeCollection =
     val oTemplates = generateSchemaSuggestions
     oTemplates match
-      case tc : TemplateCollection => AttributeCollection(tc.templates.map { (name, _) =>
-        SchemaItem(name, ItemType.TYPE_VALUE, "", false)
+      case tc : TemplateCollection => AttributeCollection(tc.templates.map { template =>
+        SchemaItem(template.name, ItemType.TYPE_VALUE, template.description, false)
       })
       case ac : AttributeCollection => ac
 
@@ -95,7 +95,7 @@ private[schema] case class SchemaContext(private val globalSchema: Json, localSc
       SchemaItem(attributeName, ItemType.fromName(typeName), description, required.contains(attributeName))
     }
 
-  private def generateTemplates(oneOf: Json): Iterable[(String, Iterable[SchemaItem])] =
+  private def generateTemplates(oneOf: Json): Iterable[Template] =
     oneOf match
       case JArr(array) => array.flatMap(_.field(REF) match
         case Some(JStr(path)) => goToSchemaDefinition(path)
@@ -108,8 +108,9 @@ private[schema] case class SchemaContext(private val globalSchema: Json, localSc
           val items = properties match
             case Some(JObj(values)) => schemaItems(values, requiredAttributes(definition))
             case _ => Iterable.empty[SchemaItem]
-          (objectName, items.filter(_.required))
-        case _ => ("", Iterable.empty[SchemaItem])
+          val description = definition.field(DESCRIPTION).flatMap(_.asString).getOrElse("")
+          Template(objectName, description, items.filter(_.required))
+        case _ => Template("", "", Iterable.empty[SchemaItem])
       }
       case _ => Iterable.empty
 
