@@ -34,6 +34,12 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
   private def parseSchema(name: String, text: String): Either[Throwable, Json] =
     io.circe.parser.parse(text).left.map(error => IllegalArgumentException(s"Invalid JSON schema $name: ${error.message}"))
 
+  /** Names of the built-in types of the objects of a section, e.g. CopyAction for actions */
+  def typeNames(section: String): Set[String] =
+    createGlobalSchemaContext.updateByName(section).map(_.generateSchemaSuggestions) match
+      case Some(TemplateCollection(templates, _)) => templates.map(_._1).toSet
+      case _ => Set.empty
+
   private[schema] def createGlobalSchemaContext: SchemaContext =
     val currentSchema = schema
     SchemaContext(currentSchema, currentSchema)

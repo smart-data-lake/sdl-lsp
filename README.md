@@ -10,6 +10,7 @@ This LSP server currently provides:
 * Hovering description of objects, their attributes etc.
 * Go to definition and find references of dataObjects and connections (`inputId`, `outputIds`, `connectionId`, ...), across files
 * Outline of the dataObjects, actions and connections of a file
+* Diagnostics: HOCON syntax errors, references to unknown dataObjects or connections, and unknown built-in types
 
 ### Features
 

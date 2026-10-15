@@ -17,8 +17,5 @@ object References:
   /** Section of the objects referenced by the given attribute, e.g. dataObjects for inputId */
   def referencedSection(attribute: String): Option[String] = sectionByAttribute.get(attribute)
 
-  /** Attributes referencing objects of the given section */
-  def attributesReferencing(section: String): Set[String] = sectionByAttribute.filter(_._2 == section).keySet
-
   /** Removes quotes, brackets and separators around an id under the caret */
   def cleanId(word: String): String = word.trim.stripSuffix(",").replaceAll("""^[\["\s]+|[\]"\s,]+$""", "")

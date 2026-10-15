@@ -1,6 +1,6 @@
 package io.smartdatalake.context
 
-import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
+import com.typesafe.config.{Config, ConfigException, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
@@ -49,6 +49,9 @@ object SDLBContext {
 
   /** Unresolved config of the given text, None if the text is invalid */
   def parse(uri: String, text: String): Option[Config] = HoconParser.parse(text, uri)
+
+  /** Unresolved config of the given text, or the parsing error */
+  def parseOrError(uri: String, text: String): Either[ConfigException, Config] = HoconParser.parseOrError(text, uri)
 
   val EMPTY_CONFIG: Config = HoconParser.EMPTY_CONFIG
 
