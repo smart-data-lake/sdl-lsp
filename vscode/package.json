@@ -1,0 +1,59 @@
+{
+  "name": "sdl-lsp-client",
+  "displayName": "SDLB Language Server",
+  "description": "Client for the Smart Data Lake Builder language server",
+  "publisher": "smartdatalake",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smart-data-lake/sdl-lsp"
+  },
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:hocon"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "hocon",
+        "aliases": [
+          "HOCON"
+        ],
+        "extensions": [
+          ".conf"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "SDLB Language Server",
+      "properties": {
+        "sdlLsp.jarPath": {
+          "type": "string",
+          "default": ".sdlb/sdl-lsp.jar",
+          "description": "Path to sdl-lsp.jar, relative to the project root (the workspace folder) or absolute. Downloaded from the release of the extension if missing."
+        },
+        "sdlLsp.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Java executable (Java 17 or newer)."
+        },
+        "sdlLsp.env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Environment variables of the server, e.g. AI_API_KEY or SDL_LSP_LOG_LEVEL."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}
