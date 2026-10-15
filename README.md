@@ -117,13 +117,16 @@ Changes of the LSP config file are applied when it is saved: the config files ar
 
 ### SDLB Schema
 
-Completion and hovering are based on the JSON schema of SDLB configurations. The server bundles the schema of SDLB 2.5.0. To use the schema of your SDLB version, export it with SDLB and set its path, relative to the project root:
+Completion, hovering and diagnostics are based on the JSON schema of SDLB configurations. The server uses the schema of the SDLB version of your project:
 
-```hocon
-schemaPath = "schema/sdl-schema.json"
-```
+1. `schemaPath` in `.sdlb/lsp-config.conf`: a schema file, relative to the project root.
+2. `sdlbVersion` in `.sdlb/lsp-config.conf`, e.g. `sdlbVersion = 2.8.1`.
+3. The SDLB version of the `pom.xml` of the project root or of its modules: the version of the parent `io.smartdatalake:sdl-parent`, else of a dependency `io.smartdatalake:sdl-*`, with its `${...}` properties resolved.
+4. The bundled schema, of SDLB 3.0.0-SNAPSHOT.
 
-If the file cannot be read, the bundled schema is used and a warning is logged.
+The schemas of other SDLB versions are downloaded from [smartdatalake.ch](https://smartdatalake.ch/json-schema-viewer/schemas/) in the background and cached in `~/.sdl-lsp/schemas`; snapshots are downloaded again after a day. Without a schema for the exact version, the closest lower released version is used. Set `schemaDownload = false` to only use the cached schemas.
+
+The schema in use and the reason are logged at startup, e.g. `Using the schema of SDLB 2.8.1 from ~/.sdl-lsp/schemas/sdl-schema-2.8.1.json (SDLB 2.8.1, version of /project/pom.xml)`. The `pom.xml` is read at startup and when the LSP config is saved.
 
 ### Logging
 
