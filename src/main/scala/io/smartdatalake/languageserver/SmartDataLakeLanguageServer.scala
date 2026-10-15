@@ -33,6 +33,7 @@ class SmartDataLakeLanguageServer(
     initializeResult.getCapabilities.setHoverProvider(true)
     initializeResult.getCapabilities.setDefinitionProvider(true)
     initializeResult.getCapabilities.setReferencesProvider(true)
+    initializeResult.getCapabilities.setDocumentSymbolProvider(true)
     Future(initializeResult).toJava
   }
 
