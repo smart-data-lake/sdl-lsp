@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.smartdatalake</groupId>
   <artifactId>sdl-lsp</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>${revision}</version>
   <name>${project.artifactId}</name>
   <description>LSP implementation for the Smart Data Lake config files</description>
   <inceptionYear>2023</inceptionYear>
@@ -20,6 +20,8 @@
   </licenses>
 
   <properties>
+    <!-- Version of local builds; release builds set it from the git tag with -Drevision=x.y.z -->
+    <revision>1.0-SNAPSHOT</revision>
     <java.version>17</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <encoding>UTF-8</encoding>
@@ -30,27 +32,6 @@
     <circe.version>0.14.17</circe.version>
     <sttp.version>3.11.0</sttp.version>
   </properties>
-
-  <repositories>
-    <repository>
-      <id>maven central</id>
-      <name>Maven Central Repository</name>
-      <url>https://repo1.maven.org/maven2/</url>
-    </repository>
-    <!-- smartdatalake snapshots -->
-    <repository>
-      <id>ossrh</id>
-      <name>ossrh snapshots</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-
 
   <dependencies>
     <dependency>
@@ -72,7 +53,6 @@
       <artifactId>config</artifactId>
       <version>${typesafe.config.version}</version>
     </dependency>
-
 
     <!-- https://mvnrepository.com/artifact/io.circe/circe-core -->
     <dependency>
@@ -116,8 +96,6 @@
       <version>${logback.version}</version>
     </dependency>
 
-
-
     <!-- Tests -->
     <dependency>
       <groupId>org.scalatest</groupId>
@@ -126,27 +104,12 @@
       <scope>test</scope>
     </dependency>
 
-
   </dependencies>
 
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
     <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
-      <!-- Creates a JAR file with the source files of the project. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>3.4.0</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar-no-fork</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <!-- see http://davidb.github.com/scala-maven-plugin -->
         <groupId>net.alchim31.maven</groupId>
@@ -249,81 +212,4 @@
     </plugins>
   </build>
 
-  <profiles>
-    <profile>
-      <id>release-sonatype</id>
-      <distributionManagement>
-        <snapshotRepository>
-          <id>ossrh</id>
-          <name>Central Repository OSSRH</name>
-          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-          <id>ossrh</id>
-          <name>Central Repository OSSRH</name>
-          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-      </distributionManagement>
-      <build>
-        <plugins>
-          <!-- Builds an empty javadoc jar to be able to publish the jar into sonatype.
-           There is incompatibilities with scala-maven-plugin with the goal doc-jar and scala 3 currently (2023-11-24).
-           Please feel free to actually generate the javadoc once the incompatibility is resolved. -->
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-              <execution>
-                <id>fake-scaladoc-jar</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>exec</goal>
-                </goals>
-                <configuration>
-                  <executable>touch</executable>
-                  <arguments><argument>target/${project.artifactId}-${project.version}-javadoc.jar</argument></arguments>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <!-- sign artifacts with gpg -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-                <configuration>
-                  <!-- Prevent `gpg` from using pinentry programs -->
-                  <gpgArguments>
-                    <arg>--pinentry-mode</arg>
-                    <arg>loopback</arg>
-                  </gpgArguments>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <!-- deploy to sonatype / maven central -->
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.13</version>
-            <extensions>true</extensions>
-            <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>false</autoReleaseAfterClose>
-              <stagingProgressTimeoutMinutes>30</stagingProgressTimeoutMinutes>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>

@@ -14,9 +14,12 @@ Maven, Java 17 (set via `java.version` in the pom; scalac gets `-release 17`), S
 mvn clean package            # builds target/sdl-lsp-1.0-SNAPSHOT-jar-with-dependencies.jar (runs tests)
 mvn package -DskipTests      # build without tests
 mvn test                     # run all tests (this is what CI runs)
+mvn package -Drevision=1.2.0 # build a given version (the pom version is ${revision}, default 1.0-SNAPSHOT)
 mvn test -Dsuites=io.smartdatalake.completion.SDLBCompletionEngineSpec          # single suite
 mvn test -Dsuites='io.smartdatalake.completion.SDLBCompletionEngineSpec @partial test name'  # tests whose name contains the text after @
 ```
+
+Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`, which builds with `-Drevision=X.Y.Z` and creates a GitHub release with the fat jar (as `sdl-lsp-X.Y.Z.jar` and `sdl-lsp.jar`); a suffix like `-rc1` makes it a pre-release. There is no Maven repository publishing.
 
 Surefire is disabled; tests run via `scalatest-maven-plugin`, so use `-Dsuites`, not `-Dtest`. Run the server with `java -jar <jar> [--client intellij|vscode]`.
 

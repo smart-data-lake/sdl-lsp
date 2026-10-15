@@ -53,7 +53,7 @@ Usually the client has responsibility to start the server. They first communicat
 
 ### Download
 
-Download latest `XXX-jar-with-dependencies.jar` from [here](https://oss.sonatype.org/content/repositories/snapshots/io/smartdatalake/sdl-lsp/1.0-SNAPSHOT/) and store it in a directory of your choice.
+Download `sdl-lsp.jar` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp.jar](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp.jar)) and store it in a directory of your choice. Each release also provides the same jar with its version in the file name.
 
 **Hint:** Should you prefer building the project on your own, follow the instructions further below.
 
@@ -184,7 +184,18 @@ To be able to build this project, you will need:
 * Clone the repo locally.
 * run `mvn clean package`
 
-After a successfull build, the `sdl-lsp-jar-with-dependencies.jar` is located in `./target` directory.
+After a successfull build, the `sdl-lsp-1.0-SNAPSHOT-jar-with-dependencies.jar` is located in `./target` directory.
+
+### Releasing
+
+Releases are published on GitHub by the `Release` workflow when a version tag is pushed:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The workflow builds and tests the project with the version taken from the tag (`mvn package -Drevision=1.2.0`), then creates the GitHub release with generated release notes and the jar attached. Tags with a suffix, like `v1.2.0-rc1`, are published as pre-releases.
 
 ## Authors
 
