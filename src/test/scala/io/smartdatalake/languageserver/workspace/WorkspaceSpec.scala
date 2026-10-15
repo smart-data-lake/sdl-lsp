@@ -72,9 +72,10 @@ class WorkspaceSpec extends UnitSpec {
         ws.contexts(uriB).rootConfig.getValue("a").origin().description() should include (uriA)
     }
 
-    it should "parse the syntax tree of a file once, shared by its context" in {
+    it should "parse each text once, shared by the file and its context" in {
         val updated = workspace.updateContent(uriB, "b = 21").refreshed(uriA).updateContent(uriA, "a = 11").refreshed(uriB)
-        updated.files(uriB).syntax should be theSameInstanceAs updated.contexts(uriB).textContext.syntax
+        updated.files(uriB).source should be theSameInstanceAs updated.contexts(uriB).textContext.source
+        updated.contexts(uriB).rootConfig.getInt("a") should be (11)
         // Files not edited keep their parsed tree
         updated.files(uriC) should be theSameInstanceAs workspace.files(uriC)
     }

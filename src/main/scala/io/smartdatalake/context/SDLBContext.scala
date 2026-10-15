@@ -1,6 +1,6 @@
 package io.smartdatalake.context
 
-import com.typesafe.config.{Config, ConfigException, ConfigList, ConfigObject, ConfigValue}
+import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 
@@ -11,6 +11,8 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
   export textContext.{isConfigCompleted, rootConfig}
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
+
+  def withSource(source: ParsedText): SDLBContext = copy(textContext = textContext.withSource(source))
 
   def withOthersConfig(othersConfig: Config): SDLBContext =
     copy(textContext = textContext.withOthersConfig(othersConfig))
@@ -45,11 +47,9 @@ object SDLBContext {
 
   def fromText(originalText: String): SDLBContext = fromText("", originalText)
 
-  /** Unresolved config of the given text, None if the text is invalid */
-  def parse(uri: String, text: String): Option[Config] = HoconParser.parse(text, uri)
-
-  /** Unresolved config of the given text, or the parsing error */
-  def parseOrError(uri: String, text: String): Either[ConfigException, Config] = HoconParser.parseOrError(text, uri)
+  /** @param othersConfig unresolved config of the other files of the workspace */
+  def fromSource(source: ParsedText, othersConfig: Config): SDLBContext =
+    SDLBContext(TextContext.create(source, othersConfig), List(), "")
 
   val EMPTY_CONFIG: Config = HoconParser.EMPTY_CONFIG
 

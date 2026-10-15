@@ -9,7 +9,8 @@ import io.smartdatalake.navigation.ConfigFile
   * Each file sees the last valid content of all the other files, so a file currently being edited
   * with a syntax error doesn't break the context of the others.
   * Each file is parsed only once per change, and contexts are computed lazily: they are only (re)built when requested, see [[refreshed]].
-  * Syntax trees are parsed on demand, once per text, and shared between the context of a file and its [[ConfigFile]].
+  * Each version of a text is parsed once, and shared by the context of the file and its [[ConfigFile]]:
+  * syntax trees and resolved configs are only computed when needed.
   *
   * @param files current text and last valid unresolved config of each file, as seen by the other files
   * @param contexts cache of computed contexts
@@ -23,17 +24,16 @@ private[workspace] case class Workspace(
     def contains(uri: String): Boolean = files.contains(uri)
 
     def updateContent(uri: String, text: String): Workspace =
-        val parsed = SDLBContext.parse(uri, text)
+        val file = files.get(uri).map(_.withText(text)).getOrElse(ConfigFile(uri, text))
         // An invalid text doesn't change what the other files see, except for a new file
-        val othersChanged = parsed.isDefined || !files.contains(uri)
-        val config = parsed.orElse(files.get(uri).map(_.config)).getOrElse(SDLBContext.EMPTY_CONFIG)
+        val othersChanged = file.source.config.isDefined || !files.contains(uri)
         // The config of the other files only changes if the context is stale
         val context = contexts.get(uri) match
-            case Some(context) if !stale.contains(uri) => context.withText(text)
-            case Some(context) => context.withOthersConfig(othersConfig(files, uri)).withText(text)
-            case None => SDLBContext.fromText(uri, text, othersConfig(files, uri))
+            case Some(context) if !stale.contains(uri) => context.withSource(file.source)
+            case Some(context) => context.withSource(file.source).withOthersConfig(othersConfig(files, uri))
+            case None => SDLBContext.fromSource(file.source, othersConfig(files, uri))
         val newStale = if othersChanged then (stale ++ contexts.keySet) - uri else stale - uri
-        copy(files = files.updated(uri, ConfigFile(uri, text, config)(() => context.textContext.syntax)), contexts = contexts.updated(uri, context), stale = newStale)
+        copy(files = files.updated(uri, file), contexts = contexts.updated(uri, context), stale = newStale)
 
     def remove(uri: String): Workspace =
         copy(files = files - uri, contexts = contexts - uri, stale = (stale ++ contexts.keySet) - uri)
@@ -43,14 +43,8 @@ private[workspace] case class Workspace(
         case None => this
         case Some(file) => contexts.get(uri) match
             case Some(_) if !stale.contains(uri) => this
-            case Some(context) => copy(contexts = contexts.updated(uri, context.withOthersConfig(othersConfig(files, uri)).withText(file.text)), stale = stale - uri)
-            case None =>
-                val context = SDLBContext.fromText(uri, file.text, othersConfig(files, uri))
-                copy(files = files.updated(uri, sharingSyntax(file, context)), contexts = contexts.updated(uri, context), stale = stale - uri)
-
-    /** The file, taking its syntax tree from the context of the same text */
-    private def sharingSyntax(file: ConfigFile, context: SDLBContext): ConfigFile =
-        ConfigFile(file.uri, file.text, file.config)(() => context.textContext.syntax)
+            case Some(context) => copy(contexts = contexts.updated(uri, context.withOthersConfig(othersConfig(files, uri))), stale = stale - uri)
+            case None => copy(contexts = contexts.updated(uri, SDLBContext.fromSource(file.source, othersConfig(files, uri))), stale = stale - uri)
 
     /** Unresolved config of all files except the given one, in a deterministic order */
     private def othersConfig(files: Map[String, ConfigFile], uri: String): Config =
@@ -58,4 +52,4 @@ private[workspace] case class Workspace(
 
 object Workspace:
     def fromTexts(texts: Map[String, String]): Workspace =
-        Workspace(texts.map((uri, text) => uri -> ConfigFile(uri, text, SDLBContext.parse(uri, text).getOrElse(SDLBContext.EMPTY_CONFIG))()))
+        Workspace(texts.map((uri, text) => uri -> ConfigFile(uri, text)))
