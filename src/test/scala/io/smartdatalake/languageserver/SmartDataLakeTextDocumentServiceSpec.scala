@@ -1,10 +1,8 @@
 package io.smartdatalake.languageserver
 
 import io.smartdatalake.UnitSpec
-import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
-import io.smartdatalake.client.ClientType
 import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position,
-  TextDocumentIdentifier, TextDocumentItem, InsertTextMode}
+  TextDocumentIdentifier, TextDocumentItem}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
   

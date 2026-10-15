@@ -2,13 +2,10 @@ package io.smartdatalake.logging
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.AppenderBase
-import ch.qos.logback.core.encoder.LayoutWrappingEncoder
 import ch.qos.logback.classic.PatternLayout
-import org.eclipse.lsp4j.{MessageParams, MessageType, LogTraceParams}
+import org.eclipse.lsp4j.{MessageParams, MessageType}
 import org.eclipse.lsp4j.services.LanguageClient
 
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.util.Try
 
 object ClientLogger:

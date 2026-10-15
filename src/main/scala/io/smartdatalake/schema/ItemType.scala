@@ -1,6 +1,5 @@
 package io.smartdatalake.schema
 
-import org.slf4j.LoggerFactory
 import io.smartdatalake.logging.SDLBLogger
 
 enum ItemType(val name: String, val defaultValue: String):
@@ -17,7 +16,6 @@ enum ItemType(val name: String, val defaultValue: String):
   def isComplexValue: Boolean = this == ItemType.OBJECT || this == ItemType.ARRAY
 
 object ItemType extends SDLBLogger:
-  private val logger = LoggerFactory.getLogger(getClass)
   def fromName(name: String): ItemType = name match
     case "string" => ItemType.STRING
     case "boolean" => ItemType.BOOLEAN

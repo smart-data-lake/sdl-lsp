@@ -1,7 +1,6 @@
 package io.smartdatalake.context
 
 import com.typesafe.config.ConfigObject
-import org.eclipse.lsp4j.CompletionItem
 import java.util.Map as JMap
 
 import scala.collection.immutable.List

@@ -2,11 +2,8 @@ package io.smartdatalake.schema
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
-import io.smartdatalake.schema.{ItemType, SchemaItem, SchemaReaderImpl}
 import ujson.*
 
-import scala.io.Source
-import scala.util.Using
 
 class SchemaContextSpec extends UnitSpec {
   // Level 0

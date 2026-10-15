@@ -1,6 +1,5 @@
 package io.smartdatalake.utils
 
-import scala.annotation.tailrec
 import scala.util.matching.Regex
 
 object MultiLineTransformer {

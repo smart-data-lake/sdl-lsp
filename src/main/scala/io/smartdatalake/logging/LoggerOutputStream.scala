@@ -1,7 +1,5 @@
 package io.smartdatalake.logging
 
-import ch.qos.logback.classic.Level
-import org.slf4j.Logger
 
 import java.io.OutputStream
 

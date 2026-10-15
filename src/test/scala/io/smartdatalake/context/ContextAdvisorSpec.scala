@@ -1,12 +1,7 @@
 package io.smartdatalake.context
 
-import com.typesafe.config.{Config, ConfigRenderOptions, ConfigUtil}
 import io.smartdatalake.UnitSpec
-import io.smartdatalake.context.hocon.HoconParser
-import io.smartdatalake.utils.MultiLineTransformer as MLT
 
-import scala.io.Source
-import scala.util.Using
 
 class ContextAdvisorSpec extends UnitSpec {
 

@@ -160,6 +160,7 @@
         <configuration>
           <args>
             <arg>-deprecation</arg>
+            <arg>-Wunused:all</arg>
             <arg>-release</arg>
             <arg>${java.version}</arg>
           </args>

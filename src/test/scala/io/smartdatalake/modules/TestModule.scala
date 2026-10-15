@@ -1,7 +1,7 @@
 package io.smartdatalake.modules
-import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineImpl}
+import io.smartdatalake.completion.SDLBCompletionEngineImpl
 import io.smartdatalake.languageserver.SmartDataLakeLanguageServer
-import io.smartdatalake.schema.{SchemaReader, SchemaReaderImpl}
+import io.smartdatalake.schema.SchemaReaderImpl
 import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.SmartDataLakeTextDocumentService
 import io.smartdatalake.completion.ai.model.ModelClient

@@ -1,13 +1,12 @@
 package io.smartdatalake.languageserver
 
-import io.smartdatalake.languageserver.{SmartDataLakeTextDocumentService, SmartDataLakeWorkspaceService}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.services.*
 import org.eclipse.lsp4j.*
 
 import java.util.concurrent.CompletableFuture
+import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
-import io.smartdatalake.context.SDLBContext
 import workspace.WorkspaceManager
 import io.smartdatalake.modules.Configurator
 
@@ -32,6 +31,7 @@ class SmartDataLakeLanguageServer(
     Future(initializeResult).toJava
   }
 
+  @nowarn("cat=deprecation") // rootUri is the fallback for clients not sending workspace folders
   private def initializeWorkspaces(initializeParams: InitializeParams): Unit =
     val params = Option(initializeParams)
     val rootUri = params.flatMap(p => Option(p.getWorkspaceFolders))

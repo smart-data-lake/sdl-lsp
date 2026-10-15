@@ -1,13 +1,10 @@
 package io.smartdatalake.completion.ai.model
 
-import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 
 import sttp.client3.*
 import sttp.client3.circe.*
 import io.circe.*
 import io.circe.generic.auto.*
-import io.circe.parser.*
-import io.circe.syntax.*
 import io.smartdatalake.logging.SDLBLogger
 import scala.concurrent.duration.*
 import scala.concurrent.Future
