@@ -24,7 +24,7 @@ jobs:
           cache: 'maven'
 
       - name: Build and test
-        run: mvn -B package -Drevision="${GITHUB_REF_NAME#v}"
+        run: mvn -B package -Drevision="${GITHUB_REF_NAME#v}" -Ptest-sonar
 
       - name: Create GitHub release
         env:

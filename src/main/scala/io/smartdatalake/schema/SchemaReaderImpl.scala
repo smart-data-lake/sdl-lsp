@@ -17,19 +17,38 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
     Source.fromInputStream(inputStream).getLines().mkString("\n").trim
   }).fold(error => throw IllegalStateException(s"Invalid schema $schemaPath", error), identity)
 
+  /** SDLB version of the bundled schema */
+  val bundledVersion: String = versionOf(bundledSchema)
+
   @volatile private var schema: Json = bundledSchema
 
-  /** Uses the given schema file, e.g. exported from another SDLB version, instead of the bundled schema. None to use the bundled schema */
-  def useSchemaFile(file: Option[Path]): Unit =
-    schema = file.flatMap { path =>
+  /** SDLB version of the schema in use */
+  def schemaVersion: String = versionOf(schema)
+
+  /**
+    * Uses the given schema file, e.g. of another SDLB version, instead of the bundled schema. None to use the bundled schema
+    * @param reason why this schema is used, for the log
+    */
+  def useSchemaFile(file: Option[Path], reason: String = ""): Unit =
+    file.flatMap { path =>
       Try(Files.readString(path)).toEither.flatMap(parseSchema(path.toString, _)) match
-        case Right(json) =>
-          info(s"Using schema $path")
-          Some(json)
+        case Right(json) => Some(json -> path.toString)
         case Left(error) =>
           warn(s"Cannot use schema $path, using the bundled schema instead: ${error.getMessage}")
           None
-    }.getOrElse(bundledSchema)
+    } match
+      case Some((json, source)) => use(json, source, reason)
+      case None => useBundledSchema(reason)
+
+  def useBundledSchema(reason: String = ""): Unit = use(bundledSchema, s"the bundled schema $schemaPath", reason)
+
+  private def use(json: Json, source: String, reason: String): Unit =
+    schema = json
+    info(s"Using the schema of SDLB ${versionOf(json)} from $source${if reason.isEmpty then "" else s" ($reason)"}")
+
+  /** Schemas since 3.0.0 give their version in x-version, older ones in version */
+  private def versionOf(json: Json): String =
+    json.hcursor.get[String]("x-version").orElse(json.hcursor.get[String]("version")).getOrElse("unknown")
 
   private def parseSchema(name: String, text: String): Either[Throwable, Json] =
     io.circe.parser.parse(text).left.map(error => IllegalArgumentException(s"Invalid JSON schema $name: ${error.message}"))
@@ -123,3 +142,6 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
     case _ => None
 
 }
+
+object SchemaReaderImpl:
+  val BUNDLED_SCHEMA = "sdl-schema/sdl-schema-3.0.0-SNAPSHOT.json"

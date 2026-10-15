@@ -154,16 +154,17 @@ class WorkspaceManager extends SDLBLogger:
             Using.resource(url.openStream()) { inputStream => scala.io.Source.fromInputStream(inputStream).getLines().mkString("\n").trim }
         }
 
+    /** Without LSP config file, an empty config at its place, so that the project root is known */
     private def loadLSPConfig(rootUri: String, rootPath: Path): SDLBContext =
         val file = rootPath.resolve(CONFIG_FILE_NAME)
+        val uri = normalizeURI(rootUri, file.toUri.toString)
         Try(Files.readString(file)).toOption match
             case Some(text) =>
-                val uri = normalizeURI(rootUri, file.toUri.toString)
                 info(s"Loading LSP config from $uri")
                 SDLBContext.fromText(uri, text)
             case None =>
                 info(s"No LSP config found at $file, using default settings")
-                SDLBContext.EMPTY_CONTEXT
+                SDLBContext.fromText(uri, "")
 
     private[workspace] def configPathEntries(lspConfig: SDLBContext): List[String] =
         val config = lspConfig.rootConfig
