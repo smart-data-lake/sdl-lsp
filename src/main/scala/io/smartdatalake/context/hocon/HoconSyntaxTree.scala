@@ -149,6 +149,41 @@ case class HoconDocument(text: String, tokens: Vector[Token], root: ObjectNode, 
 
   private def isInKey(offset: Int): Boolean = allFields.exists(_.key.exists(segment => segment.start <= offset && offset <= segment.end))
 
+  /** Path of the key segment at the given offset, from the root, e.g. `templates, t1` on t1 in `templates { t1 {...} }`. None outside of keys */
+  def keyPathAt(offset: Int): Option[List[String]] =
+    allFields.find(_.key.exists(segment => segment.start <= offset && offset <= segment.end)).map { field =>
+      val index = field.key.indexWhere(segment => segment.start <= offset && offset <= segment.end)
+      pathTo(field) ++ field.key.take(index + 1).map(_.name)
+    }
+
+  /** Path of the object containing the given field. Objects in arrays are given by their index */
+  private def pathTo(target: FieldNode): List[String] =
+    def inObject(obj: ObjectNode, prefix: List[String]): Option[List[String]] = obj.fields.iterator.map { field =>
+      if field eq target then Some(prefix)
+      else field.value.flatMap(inValue(_, prefix ++ field.keyNames))
+    }.collectFirst { case Some(path) => path }
+    def inValue(value: ValueNode, prefix: List[String]): Option[List[String]] = value.parts.iterator.map {
+      case obj: ObjectNode => inObject(obj, prefix)
+      case array: ArrayNode => array.elements.iterator.zipWithIndex.map((element, index) => inValue(element, prefix :+ index.toString)).collectFirst { case Some(path) => path }
+      case _ => None
+    }.collectFirst { case Some(path) => path }
+    inObject(root, Nil).getOrElse(Nil)
+
+  /** Substitutions of the text, e.g. `${templates.t1}`, with the segments of their path */
+  lazy val substitutions: List[(Token, List[KeySegment])] =
+    tokens.filter(_.kind == Substitution).map(token => token -> HoconDocument.substitutionSegments(token)).toList
+
+  /**
+   * Path of the substitution at the given offset: up to the segment at the offset, the whole path elsewhere in the substitution,
+   * e.g. `templates` on templates in `${templates.t1}`. The segment of the last element gives its location.
+   */
+  def substitutionPathAt(offset: Int): Option[List[KeySegment]] =
+    substitutions.collectFirst { case (token, segments) if token.start <= offset && offset <= token.end && segments.nonEmpty =>
+      segments.indexWhere(segment => segment.start <= offset && offset <= segment.end) match
+        case -1 => segments
+        case index => segments.take(index + 1)
+    }
+
   /** Occurrences of the given path in the text, e.g. `dataObjects, obj` in `dataObjects { obj {...} }` or `dataObjects.obj = {...}` */
   def find(path: List[String]): List[PathMatch] =
     def inObject(obj: ObjectNode, prefix: List[String]): List[PathMatch] = obj.fields.flatMap { field =>
@@ -168,3 +203,17 @@ case class HoconDocument(text: String, tokens: Vector[Token], root: ObjectNode, 
 
 object HoconDocument:
   def parse(text: String): HoconDocument = HoconSyntaxParser.parse(text)
+
+  /** Segments of the path of a substitution token, split at the dots outside of quotes, without quotes and surrounding spaces */
+  def substitutionSegments(token: Token): List[KeySegment] =
+    val text = token.text
+    val contentStart = if text.startsWith("${?") then 3 else 2
+    val contentEnd = if text.endsWith("}") then text.length - 1 else text.length
+    val dots = (contentStart until contentEnd).filter(i => text(i) == '.' && text.substring(contentStart, i).count(_ == '"') % 2 == 0)
+    (contentStart +: dots.map(_ + 1)).zip(dots :+ contentEnd).toList.flatMap { (from, to) =>
+      val piece = text.substring(from, to)
+      val trimmedStart = from + piece.indexWhere(!_.isWhitespace)
+      val trimmedEnd = from + piece.lastIndexWhere(!_.isWhitespace) + 1
+      Option.when(trimmedStart >= from && trimmedEnd > trimmedStart)(
+        KeySegment(text.substring(trimmedStart, trimmedEnd).replace("\"", ""), token.start + trimmedStart, token.start + trimmedEnd))
+    }

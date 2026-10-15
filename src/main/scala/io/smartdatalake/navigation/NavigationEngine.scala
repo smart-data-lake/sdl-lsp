@@ -36,18 +36,46 @@ case class ConfigFile(source: ParsedText, config: Config):
 
   def location(start: Int, end: Int): Location = Location(uri, range(start, end))
 
-/** Go to definition, find references and outline of dataObjects, actions and connections */
+/** Go to definition, find references and outline of dataObjects, actions and connections, and navigation of substitutions */
 class NavigationEngine:
 
-  /** Where the object referenced (or defined) under the caret is defined */
+  /** Where the object referenced (or defined) under the caret is defined, or the path of the substitution under the caret */
   def definitions(context: SDLBContext, files: Iterable[ConfigFile]): List[Location] =
-    target(context).toList.flatMap((section, id) => files.flatMap(definition(_, section, id)))
+    substitutionPath(context) match
+      case Some(path) => files.toList.flatMap(definitionsOfPath(_, path))
+      case None => target(context).toList.flatMap((section, id) => files.flatMap(definition(_, section, id)))
 
-  /** Where the object referenced (or defined) under the caret is referenced */
+  /**
+   * Where the object referenced (or defined) under the caret is referenced, by id or by substitution.
+   * In a substitution or on another key: the substitutions of its path.
+   */
   def references(context: SDLBContext, files: Iterable[ConfigFile], includeDeclaration: Boolean): List[Location] =
-    target(context).toList.flatMap { (section, id) =>
+    val byId = target(context).filter(_ => substitutionPath(context).isEmpty).toList.flatMap { (section, id) =>
       val declarations = if includeDeclaration then files.flatMap(definition(_, section, id)) else Nil
       declarations ++ files.flatMap(file => referencesIn(file, section, id))
+    }
+    val path = substitutionPath(context).orElse(context.textContext.syntax.keyPathAt(context.offset))
+    val bySubstitution = path.toList.flatMap { path =>
+      val substitutions = files.toList.flatMap(substitutionsOf(_, path))
+      // The declarations of dataObjects and connections are already given with their references by id
+      val declarations = if includeDeclaration && byId.isEmpty && substitutions.nonEmpty then files.toList.flatMap(definitionsOfPath(_, path)) else Nil
+      declarations ++ substitutions
+    }
+    byId ++ bySubstitution
+
+  /** Path of the substitution under the caret, up to the segment under the caret */
+  private def substitutionPath(context: SDLBContext): Option[List[String]] =
+    context.textContext.syntax.substitutionPathAt(context.offset).map(_.map(_.name))
+
+  /** Occurrences of the path as a key in the file */
+  private def definitionsOfPath(file: ConfigFile, path: List[String]): List[Location] =
+    file.syntax.find(path).map(m => file.location(m.segment.start, m.segment.end))
+
+  /** Substitutions of the path or of a path under it in the file, located at the segment of the last element of the path */
+  private def substitutionsOf(file: ConfigFile, path: List[String]): List[Location] =
+    file.syntax.substitutions.collect { case (_, segments) if segments.map(_.name).startsWith(path) =>
+      val segment = segments(path.size - 1)
+      file.location(segment.start, segment.end)
     }
 
   /** Section and id of the object under the caret: either its definition key or a reference to it */

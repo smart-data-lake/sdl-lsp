@@ -7,7 +7,8 @@ import io.smartdatalake.context.hocon.HoconParser
 import scala.annotation.tailrec
 import io.smartdatalake.logging.SDLBLogger
 
-case class SDLBContext private(textContext: TextContext, parentPath: List[String], word: String) extends SDLBLogger {
+/** @param offset offset of the caret in the text */
+case class SDLBContext private(textContext: TextContext, parentPath: List[String], word: String, offset: Int = 0) extends SDLBLogger {
   export textContext.{isConfigCompleted, rootConfig}
 
   def withText(newText: String): SDLBContext = copy(textContext = textContext.update(newText))
@@ -23,7 +24,7 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
     if originalLine <= 0 || originalLine > text.count(_ == '\n') + 1 || originalCol < 0 then this else
       val syntax = textContext.syntax
       val offset = syntax.offsetAt(originalLine - 1, originalCol)
-      copy(parentPath = syntax.parentPathAt(offset), word = syntax.wordAt(offset))
+      copy(parentPath = syntax.parentPathAt(offset), word = syntax.wordAt(offset), offset = offset)
 
   def getParentContext: Option[ConfigValue] =
     @tailrec
