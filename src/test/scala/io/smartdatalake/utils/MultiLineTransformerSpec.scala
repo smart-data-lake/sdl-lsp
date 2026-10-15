@@ -1,11 +1,8 @@
 package io.smartdatalake.utils
 
-import com.typesafe.config.{Config, ConfigRenderOptions, ConfigUtil}
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.utils.MultiLineTransformer as MLT
 
-import scala.io.Source
-import scala.util.Using
 
 class MultiLineTransformerSpec extends UnitSpec {
 

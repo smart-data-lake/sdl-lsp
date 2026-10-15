@@ -2,7 +2,7 @@ package io.smartdatalake.formatting
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.context.SDLBContext
-import org.eclipse.lsp4j.{CompletionItem, InsertTextMode}
+import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionParams
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 

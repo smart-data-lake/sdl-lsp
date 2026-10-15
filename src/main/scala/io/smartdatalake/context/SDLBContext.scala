@@ -1,7 +1,6 @@
 package io.smartdatalake.context
 
 import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue}
-import io.smartdatalake.context.TextContext
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
 import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer

@@ -3,13 +3,10 @@ package io.smartdatalake.schema
 import com.typesafe.config.{ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
-import org.slf4j.LoggerFactory
-import ujson.Value.Value
-import ujson.{Arr, Bool, Null, Num, Obj, Str}
 
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.util.{Try, Using}
+import scala.util.Using
 import io.smartdatalake.logging.SDLBLogger
 
 class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLogger {

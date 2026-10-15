@@ -10,9 +10,8 @@ import org.eclipse.lsp4j.services.{LanguageClientAware, LanguageServer, TextDocu
 
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
-import scala.concurrent.ExecutionContext.Implicits.global
 import io.smartdatalake.completion.ai.model.{ModelClient, GeminiClient}
-import io.smartdatalake.completion.ai.{AICompletionEngine, AICompletionEngineImpl}
+import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
 import io.smartdatalake.context.SDLBContext
 import scala.util.Try

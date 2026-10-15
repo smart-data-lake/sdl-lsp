@@ -1,14 +1,11 @@
 package io.smartdatalake.context.hocon
 
-import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigList, ConfigObject, ConfigValue}
-import io.smartdatalake.utils.MultiLineTransformer.{computeCorrectedPosition, flattenMultiLines}
+import com.typesafe.config.{Config, ConfigFactory}
 
-import java.util.Map.Entry as JEntry
 
 import scala.annotation.tailrec
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import io.smartdatalake.context.hocon.HoconTokens as Token
-import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 
 /**
  * Utility class to parse HOCON-formatted files

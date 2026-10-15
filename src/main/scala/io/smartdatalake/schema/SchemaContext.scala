@@ -2,7 +2,6 @@ package io.smartdatalake.schema
 
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 import io.smartdatalake.schema.SchemaKeywords.*
-import org.slf4j.LoggerFactory
 import ujson.{Arr, Obj, Str}
 import ujson.Value.Value
 

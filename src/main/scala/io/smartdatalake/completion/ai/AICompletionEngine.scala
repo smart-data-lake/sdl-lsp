@@ -1,6 +1,5 @@
 package io.smartdatalake.completion.ai
 
-import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 
 import io.circe.*
 import io.circe.generic.auto.*

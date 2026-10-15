@@ -1,7 +1,6 @@
 package io.smartdatalake.logging
 
 import org.slf4j.{Logger, LoggerFactory}
-import ch.qos.logback.core.net.server.Client
 
 trait SDLBLogger:
     self =>

@@ -2,10 +2,7 @@ package io.smartdatalake.completion
 
 import io.smartdatalake.UnitSpec
 import io.smartdatalake.context.SDLBContext
-import ujson.*
 
-import scala.io.Source
-import scala.util.Using
 
 class SDLBCompletionEngineSpec extends UnitSpec {
   

@@ -1,12 +1,9 @@
 package io.smartdatalake.context.hocon
 
-import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigRenderOptions, ConfigUtil}
+import com.typesafe.config.Config
 import io.smartdatalake.UnitSpec
-import io.smartdatalake.context.hocon.HoconParser
 import io.smartdatalake.utils.MultiLineTransformer
 
-import scala.io.Source
-import scala.util.Using
 
 class HoconParserSpec extends UnitSpec {
 

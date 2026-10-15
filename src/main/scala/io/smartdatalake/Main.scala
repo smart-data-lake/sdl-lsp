@@ -1,22 +1,15 @@
 package io.smartdatalake
 
 import ch.qos.logback.classic.Level
-import io.smartdatalake.logging.{LoggerOutputStream, LoggingManager}
+import io.smartdatalake.logging.LoggingManager
 import io.smartdatalake.modules.AppModule
 import io.smartdatalake.client.ClientType
-import jdk.jshell.spi.ExecutionControlProvider
 import org.eclipse.lsp4j.jsonrpc.Launcher
-import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, LanguageServer}
-import org.eclipse.lsp4j.{MessageParams, MessageType}
 
-import java.io.{InputStream, OutputStream, PrintStream, PrintWriter}
-import org.slf4j.LoggerFactory
+import java.io.{InputStream, PrintStream, PrintWriter}
 
-import java.util.concurrent.Executors
-import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
-import org.eclipse.lsp4j.LogTraceParams
 import io.smartdatalake.logging.SDLBLogger
 import io.smartdatalake.logging.ClientLogger
 
