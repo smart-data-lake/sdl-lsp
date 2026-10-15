@@ -90,4 +90,17 @@ class SDLBContextSpec extends UnitSpec {
     context.withCaretPosition(9, 14).parentPath shouldBe List("actions", "act", "inputId")
   }
 
+  it should "ignore comments and structural characters in strings when locating the caret" in {
+    def parentPath(text: String, line: Int, col: Int) = SDLBContext.fromText(text).withCaretPosition(line, col).parentPath
+    parentPath("dataObjects {\n  obj {\n    url = \"http://x/#anchor\"\n    \n  }\n}", 4, 4) shouldBe List("dataObjects", "obj")
+    parentPath("dataObjects {\n  obj {\n    sql = \"select '}' from t\"\n    \n  }\n}", 4, 4) shouldBe List("dataObjects", "obj")
+    parentPath("dataObjects {\n  // obj {\n  obj {\n    \n  }\n}", 4, 4) shouldBe List("dataObjects", "obj")
+  }
+
+  it should "support colons as key value separators" in {
+    def parentPath(text: String, line: Int, col: Int) = SDLBContext.fromText(text).withCaretPosition(line, col).parentPath
+    parentPath("dataObjects: {\n  obj: {\n    \n  }\n}", 3, 4) shouldBe List("dataObjects", "obj")
+    parentPath("actions {\n  a1 {\n    inputId: \n  }\n}", 3, 13) shouldBe List("actions", "a1", "inputId")
+  }
+
 }

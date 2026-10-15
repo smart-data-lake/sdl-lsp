@@ -1,4 +1,4 @@
-package io.smartdatalake.navigation
+package io.smartdatalake.context.hocon
 
 import scala.annotation.tailrec
 
@@ -23,6 +23,41 @@ object HoconScanner:
         case '}' => None // closing an enclosing block: no block was opened
         case _ => scan(i + 1, depth)
     scan(from, 0)
+
+  /**
+   * Same text, with the same positions, where comments are blanked and the characters with a structural meaning
+   * inside strings are replaced, so the structure can be analysed on the raw text
+   */
+  def mask(text: String): String =
+    val masked = new StringBuilder(text)
+    @tailrec
+    def scan(i: Int): Unit =
+      if i < text.length then
+        if text.startsWith("\"\"\"", i) then
+          val end = text.indexOf("\"\"\"", i + 3)
+          val stringEnd = if end < 0 then text.length else end
+          maskStructure(masked, i + 3, stringEnd)
+          scan(stringEnd + 3)
+        else text(i) match
+          case '"' =>
+            val end = stringEnd(text, i + 1)
+            maskStructure(masked, i + 1, end - 1)
+            scan(end)
+          case '#' => scan(blank(masked, i, lineEnd(text, i)))
+          case '/' if text.startsWith("//", i) => scan(blank(masked, i, lineEnd(text, i)))
+          case _ => scan(i + 1)
+    scan(0)
+    masked.toString
+
+  private val STRUCTURAL_CHARACTERS = Set('{', '}', '[', ']', '#', '=', ':', '/', ',')
+
+  private def maskStructure(masked: StringBuilder, from: Int, until: Int): Unit =
+    (from until math.min(until, masked.length)).foreach(i => if STRUCTURAL_CHARACTERS.contains(masked(i)) then masked(i) = '_')
+
+  /** Blanks the characters until the given offset (excluded) and returns it */
+  private def blank(masked: StringBuilder, from: Int, until: Int): Int =
+    (from until until).foreach(i => if masked(i) != '\r' then masked(i) = ' ')
+    until
 
   /** Line (0-based) of the given offset */
   def lineOf(text: String, offset: Int): Int = text.substring(0, math.min(offset, text.length)).count(_ == '\n')
