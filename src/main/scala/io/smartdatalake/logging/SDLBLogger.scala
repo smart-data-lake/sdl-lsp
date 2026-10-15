@@ -10,7 +10,8 @@ trait SDLBLogger:
         "apiKey" -> """(?<=key=)[A-Za-z0-9_-]+""",
         "password" -> """(?<=password=)[^&\s]+""",
         "token" -> """(?<=token=)[^&\s]+""",
-        "secret" -> """(?<=secret=)[^&\s]+"""
+        "secret" -> """(?<=secret=)[^&\s]+""",
+        "bearer" -> """(?<=Bearer )[^\s"]+"""
     )
 
     private[logging] def anonymizeMessage(message: String, anonymize: Boolean = true): String =

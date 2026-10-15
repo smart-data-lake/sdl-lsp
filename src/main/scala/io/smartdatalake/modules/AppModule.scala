@@ -15,6 +15,7 @@ import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
 import io.smartdatalake.context.SDLBContext
 import scala.util.Try
+import io.smartdatalake.logging.LoggingManager
 
 trait AppModule:
   lazy val schemaReader: SchemaReader = new SchemaReaderImpl("sdl-schema/sdl-schema-2.5.0.json")
@@ -41,6 +42,7 @@ trait AppModule:
 class Configurator(aiCompletionEngine: AICompletionEngineImpl, modelClient: ModelClient):
   def configureApp(lspConfig: SDLBContext): Unit =
     def setting(key: String): Option[String] = Try(lspConfig.rootConfig.getString(key)).toOption.map(_.trim).filter(_.nonEmpty)
+    setting("logLevel").foreach(LoggingManager.setRootLevel)
     aiCompletionEngine.tabStopsPrompt = Try(lspConfig.rootConfig.getString("tabStopsPrompt")).toOption
     aiCompletionEngine.model = setting("aiModel")
     modelClient match

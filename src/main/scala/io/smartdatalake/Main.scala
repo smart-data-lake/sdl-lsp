@@ -62,8 +62,11 @@ object Main extends AppModule with SDLBLogger {
     val sdlbLanguageServer: LanguageServer & LanguageClientAware = languageServer
 
     try
-      val launcher: Launcher[LanguageClient] = Launcher.Builder[LanguageClient]()
-        .traceMessages(PrintWriter(LoggingManager.createPrintStreamWithLoggerName("jsonRpcLogger", level = Level.TRACE)))
+      val builder = Launcher.Builder[LanguageClient]()
+      // Tracing formats every message: only enabled if the trace level is set at startup
+      if LoggingManager.isTraceEnabled("jsonRpcLogger") then
+        builder.traceMessages(PrintWriter(LoggingManager.createPrintStreamWithLoggerName("jsonRpcLogger", level = Level.TRACE)))
+      val launcher: Launcher[LanguageClient] = builder
         .setExecutorService(serviceExecutorService)
         .setInput(in)
         .setOutput(out)
