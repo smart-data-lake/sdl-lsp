@@ -1,10 +1,14 @@
 <configuration>
 
+    <!-- Both can be set as system property or environment variable -->
+    <property name="LOG_DIR" value="${SDL_LSP_LOG_DIR:-${user.home}/.sdl-lsp/logs}"/>
+    <property name="LOG_LEVEL" value="${SDL_LSP_LOG_LEVEL:-INFO}"/>
+
     <!-- Appender to write logs to a file -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/sdl-lsp.log</file>
+        <file>${LOG_DIR}/sdl-lsp.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/sdl-lsp.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/sdl-lsp.%i.log</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>10</maxIndex>
         </rollingPolicy>
@@ -20,8 +24,8 @@
         <pattern>%date{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </appender>
 
-    <!-- Root logger settings -->
-    <root level="trace">
+    <!-- Root logger settings: the level can also be changed with logLevel in .sdlb/lsp-config.conf -->
+    <root level="${LOG_LEVEL}">
         <appender-ref ref="FILE"/>
         <appender-ref ref="LSP_CLIENT"/>
     </root>
