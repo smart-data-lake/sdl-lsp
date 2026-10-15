@@ -1,4 +1,4 @@
-package io.smartdatalake.navigation
+package io.smartdatalake.context.hocon
 
 import io.smartdatalake.UnitSpec
 
@@ -22,3 +22,15 @@ class HoconScannerSpec extends UnitSpec:
         HoconScanner.lineStart(text, 2) shouldBe 6
         HoconScanner.lineOf(text, 7) shouldBe 2
     }
+
+    it should "mask comments and structural characters in strings, keeping positions" in {
+        val text = "a { # comment {\n  b = \"x{y}#z\" // other\n  c = \"\"\"[1]\"\"\"\n}"
+        val masked = HoconScanner.mask(text)
+        masked.length shouldBe text.length
+        masked shouldBe "a {            \n  b = \"x_y__z\"         \n  c = \"\"\"_1_\"\"\"\n}"
+    }
+
+    it should "keep escaped quotes inside strings" in {
+        HoconScanner.mask("a = \"x\\\"{\" # c") shouldBe "a = \"x\\\"_\"    "
+    }
+

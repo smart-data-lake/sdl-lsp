@@ -2,7 +2,7 @@ package io.smartdatalake.context
 
 import com.typesafe.config.{Config, ConfigException, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
-import io.smartdatalake.context.hocon.HoconParser
+import io.smartdatalake.context.hocon.{HoconParser, HoconScanner}
 import io.smartdatalake.utils.MultiLineTransformer
 
 import scala.annotation.tailrec
@@ -20,8 +20,10 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
     val TextContext(_, originalText, _, configText, _, _) = textContext
     if originalLine <= 0 || originalLine > originalText.count(_ == '\n') + 1 || originalCol < 0 then this else
       val (newLine, newCol) = MultiLineTransformer.computeCorrectedPosition(originalText, originalLine, originalCol)
-      val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol)
-      val parentPath = HoconParser.retrieveParentPath(configText, newLine, newCol)
+      // Comments and structural characters in strings must not be taken for structure
+      val maskedText = HoconScanner.mask(configText)
+      val word = HoconParser.retrieveWordAtPosition(maskedText, newLine, newCol)
+      val parentPath = HoconParser.retrieveParentPath(maskedText, newLine, newCol)
       copy(parentPath = parentPath, word = word)
       
 

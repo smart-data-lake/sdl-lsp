@@ -2,6 +2,7 @@ package io.smartdatalake.navigation
 
 import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue, ConfigValueType}
 import io.smartdatalake.context.{References, SDLBContext}
+import io.smartdatalake.context.hocon.HoconScanner
 import io.smartdatalake.context.References.{ACTIONS, CONNECTIONS, DATA_OBJECTS}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.{DocumentSymbol, Location, Position, Range, SymbolKind}
