@@ -51,7 +51,7 @@ object Main extends AppModule with SDLBLogger {
         }
       case _ :: tail => parseArgs(tail)
       case Nil => 
-        info("No client type specified, defaulting to Unknown")
+        info("No client type specified, it will be detected from the initialize request")
         ClientType.Unknown
     }
     

@@ -9,17 +9,20 @@ import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 import workspace.WorkspaceManager
 import io.smartdatalake.modules.Configurator
+import io.smartdatalake.client.{ClientAware, ClientType}
+import io.smartdatalake.logging.SDLBLogger
 
 class SmartDataLakeLanguageServer(
-  private val textDocumentService: TextDocumentService,
+  private val textDocumentService: TextDocumentService & ClientAware,
   private val workspaceManager: WorkspaceManager,
   private val workspaceService: WorkspaceService,
-  private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware {
+  private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware with SDLBLogger {
   
   private var errorCode = 1
   workspaceManager.onLSPConfigLoaded(configurator.configureApp)
 
   override def initialize(initializeParams: InitializeParams): CompletableFuture[InitializeResult] = {
+    detectClientType(initializeParams)
     initializeWorkspaces(initializeParams)  
     val initializeResult = InitializeResult(ServerCapabilities())
     initializeResult.getCapabilities.setTextDocumentSync(TextDocumentSyncKind.Full)
@@ -30,6 +33,13 @@ class SmartDataLakeLanguageServer(
     initializeResult.getCapabilities.setHoverProvider(true)
     Future(initializeResult).toJava
   }
+
+  /** The client type given on the command line has priority */
+  private def detectClientType(initializeParams: InitializeParams): Unit =
+    val clientName = Option(initializeParams).flatMap(p => Option(p.getClientInfo)).flatMap(info => Option(info.getName))
+    clientName.foreach(name => info(s"Client: $name ${Option(initializeParams.getClientInfo.getVersion).getOrElse("")}"))
+    if textDocumentService.clientType == ClientType.Unknown then
+      textDocumentService.clientType = clientName.map(ClientType.fromClientName).getOrElse(ClientType.Unknown)
 
   @nowarn("cat=deprecation") // rootUri is the fallback for clients not sending workspace folders
   private def initializeWorkspaces(initializeParams: InitializeParams): Unit =
