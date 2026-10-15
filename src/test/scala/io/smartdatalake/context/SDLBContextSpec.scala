@@ -44,7 +44,7 @@ class SDLBContextSpec extends UnitSpec {
     line3Start.word shouldBe ""
 
     val line3End = SDLBContext.fromText(basicText).withCaretPosition(3, 999)
-    line3End.parentPath shouldBe List("global", "spark-options", "\"spark.sql.shuffle.partitions\"")
+    line3End.parentPath shouldBe List("global", "spark-options", "spark.sql.shuffle.partitions")
     line3End.word shouldBe "2"
 
     val line5Start = SDLBContext.fromText(basicText).withCaretPosition(5, 0)
@@ -64,7 +64,7 @@ class SDLBContextSpec extends UnitSpec {
 
     val line23EdgeInside = SDLBContext.fromText(withListText).withCaretPosition(23, 7)
     line23EdgeInside.parentPath shouldBe List("actions", "join-departures-airports", "transformers", "0")
-    line23EdgeInside.word shouldBe "}},"
+    line23EdgeInside.word shouldBe "}"
 
     val line24EdgeInsideAgain = SDLBContext.fromText(withListText).withCaretPosition(24, 7)
     line24EdgeInsideAgain.parentPath shouldBe List("actions", "join-departures-airports", "transformers", "1")
@@ -75,7 +75,7 @@ class SDLBContextSpec extends UnitSpec {
   it should "create a context correctly when in a list but not in an element directly" in {
     val line23EdgeOutside = SDLBContext.fromText(withListText).withCaretPosition(23, 8)
     line23EdgeOutside.parentPath shouldBe List("actions", "join-departures-airports", "transformers")
-    line23EdgeOutside.word shouldBe "}},"
+    line23EdgeOutside.word shouldBe "}"
     val line24StillEdgeOutside = SDLBContext.fromText(withListText).withCaretPosition(24, 6)
     line24StillEdgeOutside.parentPath shouldBe List("actions", "join-departures-airports", "transformers")
     line24StillEdgeOutside.word shouldBe "{" //line23EdgeOutside.textContext.rootConfig.root().render(ConfigRenderOptions.concise())

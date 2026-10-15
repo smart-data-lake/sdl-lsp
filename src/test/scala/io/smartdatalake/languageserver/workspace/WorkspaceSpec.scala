@@ -20,7 +20,7 @@ class WorkspaceSpec extends UnitSpec {
 
     it should "update the edited context and mark the others as stale" in {
         val updated = workspace.refreshed(uriA).refreshed(uriC).updateContent(uriB, "b = 20")
-        updated.texts(uriB) should be ("b = 20")
+        updated.files(uriB).text should be ("b = 20")
         updated.contexts(uriB).rootConfig.getInt("b") should be (20)
         updated.stale should be (Set(uriA, uriC))
 
@@ -31,8 +31,8 @@ class WorkspaceSpec extends UnitSpec {
 
     it should "share only the last valid content of a file with the other files" in {
         val updated = workspace.updateContent(uriB, "b = {").refreshed(uriA)
-        updated.texts(uriB) should be ("b = {")
-        updated.parsed(uriB).getInt("b") should be (2)
+        updated.files(uriB).text should be ("b = {")
+        updated.files(uriB).config.getInt("b") should be (2)
         updated.stale shouldBe empty
         updated.contexts(uriA).rootConfig.getInt("b") should be (2)
         updated.contexts(uriA).isConfigCompleted shouldBe true
@@ -40,7 +40,7 @@ class WorkspaceSpec extends UnitSpec {
 
     it should "share an empty content for files invalid from the start" in {
         val ws = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = {"))
-        ws.parsed(uriB).isEmpty shouldBe true
+        ws.files(uriB).config.isEmpty shouldBe true
         ws.refreshed(uriA).contexts(uriA).rootConfig.getInt("a") should be (1)
     }
 
@@ -70,5 +70,12 @@ class WorkspaceSpec extends UnitSpec {
     it should "keep track of the file each value comes from" in {
         val ws = Workspace.fromTexts(Map(uriA -> "a = 1", uriB -> "b = 2")).refreshed(uriB)
         ws.contexts(uriB).rootConfig.getValue("a").origin().description() should include (uriA)
+    }
+
+    it should "parse the syntax tree of a file once, shared by its context" in {
+        val updated = workspace.updateContent(uriB, "b = 21").refreshed(uriA).updateContent(uriA, "a = 11").refreshed(uriB)
+        updated.files(uriB).syntax should be theSameInstanceAs updated.contexts(uriB).textContext.syntax
+        // Files not edited keep their parsed tree
+        updated.files(uriC) should be theSameInstanceAs workspace.files(uriC)
     }
 }

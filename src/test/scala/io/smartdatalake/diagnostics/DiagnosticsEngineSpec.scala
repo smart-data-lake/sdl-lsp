@@ -11,18 +11,29 @@ class DiagnosticsEngineSpec extends UnitSpec:
     private val uri = "file:///ws/actions.conf"
     private val objectsUri = "file:///ws/objects.conf"
     private val objectsText = "dataObjects {\n  ext-departures { type = CsvFileDataObject }\n}\nconnections {\n  my-db { type = JdbcTableConnection }\n}"
-    private val objectsFile = ConfigFile(objectsUri, objectsText, SDLBContext.parse(objectsUri, objectsText).get)
+    private val objectsFile = ConfigFile(objectsUri, objectsText, SDLBContext.parse(objectsUri, objectsText).get)()
 
     /** (severity, 1-based line, column, message) of each diagnostic */
     private def check(text: String, files: List[ConfigFile] = List(objectsFile)) =
         engine.diagnostics(uri, text, files).map(d => (d.getSeverity, d.getRange.getStart.getLine + 1, d.getRange.getStart.getCharacter, d.getMessage))
 
-    "Diagnostics engine" should "report syntax errors with their line" in {
-        val diagnostics = check("actions {\n  a1 {\n    type = CopyAction\n  \n}")
+    "Diagnostics engine" should "report syntax errors with their position" in {
+        // The last brace closes a1, so actions is not closed
+        check("actions {\n  a1 {\n    type = CopyAction\n  \n}") shouldBe List((DiagnosticSeverity.Error, 1, 8, "Unclosed '{'"))
+    }
+
+    it should "report all syntax errors" in {
+        check("actions {\n  a1 {\n    inputId = \n    type = [CopyAction\n  }\n}") shouldBe List(
+            (DiagnosticSeverity.Error, 3, 12, "Missing value"),
+            (DiagnosticSeverity.Error, 4, 11, "Unclosed '['")
+        )
+    }
+
+    it should "report the error of Typesafe Config if the syntax tree has none" in {
+        val diagnostics = check("a = ${b} { c = 1 }\nb = 1\nd = [1] { e = 2 }")
         diagnostics should have size 1
-        val (severity, line, _, message) = diagnostics.head
+        val (severity, _, _, message) = diagnostics.head
         severity shouldBe DiagnosticSeverity.Error
-        line shouldBe 5
         message should not include (uri)
     }
 

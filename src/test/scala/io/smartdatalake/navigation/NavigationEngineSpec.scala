@@ -38,7 +38,7 @@ class NavigationEngineSpec extends UnitSpec:
           |  }
           |}""".stripMargin
 
-    private def file(uri: String, text: String) = ConfigFile(uri, text, SDLBContext.parse(uri, text).get)
+    private def file(uri: String, text: String) = ConfigFile(uri, text, SDLBContext.parse(uri, text).get)()
     private val files = List(file(objectsUri, objectsText), file(actionsUri, actionsText))
     private val engine = NavigationEngine()
 
