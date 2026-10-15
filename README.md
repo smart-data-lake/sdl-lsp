@@ -52,29 +52,47 @@ Usually the client has responsibility to start the server. They first communicat
 ### Requirements
 
 * Java 17 or newer
-* IntelliJ (later also VSCode)
+* IntelliJ or VSCode
 
 ### Download
 
-Download `sdl-lsp.jar` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp.jar](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp.jar)) and store it in a directory of your choice. Each release also provides the same jar with its version in the file name.
+Download `sdl-lsp.jar` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp.jar](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp.jar)) and store it in `.sdlb` directory.
+Each release also provides the same jar with its version in the file name.
 
 **Hint:** Should you prefer building the project on your own, follow the instructions further below.
 
 ### Setting a basic LSP client in IntelliJ
 
 * Download the generic LSP support for IntelliJ using [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij).
-* Look for the LSP4iJ icon on your IDE and click on the right and select `New Language Server`. See screnshot below: ![screenshot of Intellij for setting up LSP4IJ](resources/img/lsp4ij-plugin.png)
-* provide the following parameters:
-  * `Server > Name` -> `SDLB Server`
-  * `Server > Command` -> `java -jar $PATH_TO_JAR` (see [Getting Started](#getting-started))
-  * `Mappings > File name patters` -> click on `+` and then:
-    * `File name patterns` -> `*.conf`
-    * `Language Id` -> `hocon`
+* Look for the LSP4iJ icon in the tool list on the right of IntelliJ. Then select `New Language Server` icon on the right.
+* See screnshot below: ![screenshot of Intellij for setting up LSP4IJ](resources/img/lsp4ij-plugin.png)
+* Then `choose template...` "Smart Data Lake Language Server".
 * Click on `ok`. The server should start.
+
+LSP4iJ plugin should automatically download `sdl-lsp.jar` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp.jar](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp.jar)) and store it in `.sdlb` directory.
+`.sdlb/sdl-lsp.jar` is the filename referenced in the template.
 
 ### Setting the custom LSP client in VSCode
 
-Work in progress, should be released soon. Stay tuned!
+VSCode needs a client extension to start the server. It is published with each release, next to the jar:
+
+* Download `sdl-lsp-vscode.vsix` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp-vscode.vsix](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp-vscode.vsix)) and install it with `code --install-extension sdl-lsp-vscode.vsix`, or in VSCode with `Extensions: Install from VSIX...` in the command palette.
+* Open the root folder of your SDLB project. The server starts when a `.conf` file is opened; its logs are in the `Output` view, under `SDLB Language Server`.
+
+Like the IntelliJ template, the extension uses `.sdlb/sdl-lsp.jar` in the project root. If this file is missing, the extension downloads the jar of its own release there, so the extension and the server have the same version. To update the server, install the new extension, delete `.sdlb/sdl-lsp.jar` and reload the window.
+
+Settings:
+
+* `sdlLsp.jarPath`: another location of the jar, relative to the project root or absolute (default: `.sdlb/sdl-lsp.jar`). It is downloaded there as well if missing.
+* `sdlLsp.javaPath`: the Java executable, if `java` on the `PATH` is not Java 17 or newer.
+* `sdlLsp.env`: environment variables of the server, e.g. `{ "AI_API_KEY": "..." }` for the [AI-assisted features](#ai-assisted-features).
+
+The extension associates `.conf` files with the language `hocon`. If another extension claims `.conf` files, check that the language mode in the status bar is `HOCON`.
+
+**Hint:** With Remote-WSL or another remote connection, the extension and the server run on the remote side: install the extension there, with Java; an absolute `sdlLsp.jarPath` must be a path of the remote machine.
+
+The extension lives in the [`vscode`](vscode) folder. To try changes without installing it, open that folder in VSCode, run `npm install` and press `F5`: a new window starts with the extension loaded.
+To build the `.vsix` yourself, run `npx @vscode/vsce package --skip-license` in that folder.
 
 ## LSP Server Configuration
 
@@ -89,7 +107,7 @@ The workspace determines which files are processed together by the LSP server. T
 Like the `--config` option of the SDLB command line, `configPaths` lists the files and directories forming the workspace, comma-separated and relative to the project root. Directories are searched recursively for `.conf` files.
 
 ```hocon
-configPaths = "conf,env/local.conf"
+configPaths = "config,envConfig/local.conf"
 ```
 
 **Example structure:**
@@ -98,11 +116,11 @@ configPaths = "conf,env/local.conf"
 project/
 ├── .sdlb/
 │   └── lsp-config.conf
-├── conf/                # Part of the workspace, including all subfolders
-│   ├── pipeline1/
+├── config/              # Part of the workspace, including all subfolders
+│   ├── abc/
 │   │   └── extract.conf
 │   └── common.conf
-└── env/
+└── envConfig/
     ├── local.conf       # Part of the workspace
     └── prod.conf        # Not in the workspace
 ```
@@ -137,7 +155,7 @@ Logs are sent to the LSP client and written to `~/.sdl-lsp/logs/sdl-lsp.log`. Th
 The SDL LSP server includes AI-assisted features to improve code completion and suggestions. It works with any endpoint implementing the OpenAI chat completions API (OpenAI, Gemini, Mistral, a local Ollama server, ...). By default, Gemini is used. To use these features:
 
 1. Obtain an API key from your provider, e.g. a Google API key from [Google AI Studio](https://aistudio.google.com) for the default Gemini setup
-2. Configure your LSP client to include the environment variable `AI_API_KEY` with your API key (`GOOGLE_API_KEY` is supported as well). See screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
+2. Configure your LSP client to include the environment variable `AI_API_KEY` with your API key (`GOOGLE_API_KEY` is supported as well). In VSCode, use the setting `sdlLsp.env`. For IntelliJ, see screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
 3. Optionally choose another provider or model, and customize the AI prompt in your `.sdlb/lsp-config.conf` file
 
 #### Choosing the AI provider and model

@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag like v1.2.0 builds, tests and publishes the server jar as a GitHub release.
+# Pushing a tag like v1.2.0 builds, tests and publishes the server jar and the VS Code extension as a GitHub release.
 # Tags with a suffix like v1.2.0-rc1 are published as pre-releases.
 on:
   push:
@@ -26,16 +26,33 @@ jobs:
       - name: Build and test
         run: mvn -B package -Drevision="${GITHUB_REF_NAME#v}" -Ptest-sonar
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: vscode/package-lock.json
+
+      - name: Package VS Code extension
+        working-directory: vscode
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm ci
+          npm version "$VERSION" --no-git-tag-version
+          mkdir -p ../release
+          npx --yes @vscode/vsce@4.0.0 package --skip-license -o "../release/sdl-lsp-vscode-${VERSION}.vsix"
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          # Versioned jar, plus sdl-lsp.jar for the stable link releases/latest/download/sdl-lsp.jar
-          mkdir -p release
+          # Versioned files, plus sdl-lsp.jar and sdl-lsp-vscode.vsix for the stable links releases/latest/download/...
           cp "target/sdl-lsp-${VERSION}-jar-with-dependencies.jar" "release/sdl-lsp-${VERSION}.jar"
           cp "target/sdl-lsp-${VERSION}-jar-with-dependencies.jar" release/sdl-lsp.jar
+          cp "release/sdl-lsp-vscode-${VERSION}.vsix" release/sdl-lsp-vscode.vsix
           PRERELEASE=""
           if [[ "$VERSION" == *-* ]]; then PRERELEASE="--prerelease"; fi
           gh release create "$GITHUB_REF_NAME" "release/sdl-lsp-${VERSION}.jar" release/sdl-lsp.jar \
+            "release/sdl-lsp-vscode-${VERSION}.vsix" release/sdl-lsp-vscode.vsix \
             --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $PRERELEASE
