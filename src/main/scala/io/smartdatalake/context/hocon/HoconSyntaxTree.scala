@@ -151,23 +151,24 @@ case class HoconDocument(text: String, tokens: Vector[Token], root: ObjectNode, 
 
   /** Path of the key segment at the given offset, from the root, e.g. `templates, t1` on t1 in `templates { t1 {...} }`. None outside of keys */
   def keyPathAt(offset: Int): Option[List[String]] =
-    allFields.find(_.key.exists(segment => segment.start <= offset && offset <= segment.end)).map { field =>
+    fieldPaths.collectFirst { case (field, path) if field.key.exists(segment => segment.start <= offset && offset <= segment.end) =>
       val index = field.key.indexWhere(segment => segment.start <= offset && offset <= segment.end)
-      pathTo(field) ++ field.key.take(index + 1).map(_.name)
+      path ++ field.key.take(index + 1).map(_.name)
     }
 
-  /** Path of the object containing the given field. Objects in arrays are given by their index */
-  private def pathTo(target: FieldNode): List[String] =
-    def inObject(obj: ObjectNode, prefix: List[String]): Option[List[String]] = obj.fields.iterator.map { field =>
-      if field eq target then Some(prefix)
-      else field.value.flatMap(inValue(_, prefix ++ field.keyNames))
-    }.collectFirst { case Some(path) => path }
-    def inValue(value: ValueNode, prefix: List[String]): Option[List[String]] = value.parts.iterator.map {
-      case obj: ObjectNode => inObject(obj, prefix)
-      case array: ArrayNode => array.elements.iterator.zipWithIndex.map((element, index) => inValue(element, prefix :+ index.toString)).collectFirst { case Some(path) => path }
-      case _ => None
-    }.collectFirst { case Some(path) => path }
-    inObject(root, Nil).getOrElse(Nil)
+  /**
+   * All fields of the text, as allFields, with the path of the object containing them.
+   * Objects in arrays are given by their index, the objects of a concatenation like `${a} { b = 1 }` share the path of their field.
+   */
+  lazy val fieldPaths: List[(FieldNode, List[String])] =
+    def inValue(value: ValueNode, path: List[String]): List[(FieldNode, List[String])] = value.parts.flatMap {
+      case obj: ObjectNode => inObject(obj, path)
+      case array: ArrayNode => array.elements.zipWithIndex.flatMap((element, index) => inValue(element, path :+ index.toString))
+      case _ => Nil
+    }
+    def inObject(obj: ObjectNode, path: List[String]): List[(FieldNode, List[String])] =
+      obj.fields.flatMap(field => (field -> path) :: field.value.toList.flatMap(inValue(_, path ++ field.keyNames)))
+    inObject(root, Nil)
 
   /** Substitutions of the text, e.g. `${templates.t1}`, with the segments of their path */
   lazy val substitutions: List[(Token, List[KeySegment])] =

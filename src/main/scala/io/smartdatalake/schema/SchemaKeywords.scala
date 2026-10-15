@@ -10,6 +10,7 @@ private[schema] object SchemaKeywords:
   val PROPERTIES = "properties"
   val REQUIRED = "required"
   val DESCRIPTION = "description"
+  val TITLE = "title"
   val ADDITIONAL_PROPERTIES = "additionalProperties"
   val ONE_OF = "oneOf"
   val ITEMS = "items"
