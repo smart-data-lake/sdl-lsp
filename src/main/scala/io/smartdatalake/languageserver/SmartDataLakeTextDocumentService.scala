@@ -13,7 +13,7 @@ import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
   DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-  Hover, HoverParams, InsertTextMode}
+  DefinitionParams, Hover, HoverParams, InsertTextMode, Location, LocationLink, ReferenceParams}
 
 import java.util
 import java.util.concurrent.{CompletableFuture, TimeUnit}
@@ -21,12 +21,14 @@ import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import workspace.WorkspaceManager
+import io.smartdatalake.navigation.NavigationEngine
 
 class SmartDataLakeTextDocumentService(
       private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine,
       private val aiCompletionEngine: AICompletionEngine,
-      private val workspaceManager: WorkspaceManager)(using ExecutionContext)
+      private val workspaceManager: WorkspaceManager,
+      private val navigationEngine: NavigationEngine)(using ExecutionContext)
       extends TextDocumentService
       with ClientAware with SDLBLogger {
   import workspaceManager.{getContext, isLSPConfigUri, defaultLSPConfigText}
@@ -121,6 +123,19 @@ class SmartDataLakeTextDocumentService(
             debug("No AI completion available in time, using default completion")
           completionItem
         }.toJava
+
+  override def definition(params: DefinitionParams): CompletableFuture[messages.Either[util.List[? <: Location], util.List[? <: LocationLink]]] = Future {
+    val uri = params.getTextDocument.getUri
+    val context = getContext(uri).withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
+    messages.Either.forLeft[util.List[? <: Location], util.List[? <: LocationLink]](navigationEngine.definitions(context, workspaceManager.visibleFiles(uri)).toJava)
+  }.toJava
+
+  override def references(params: ReferenceParams): CompletableFuture[util.List[? <: Location]] = Future {
+    val uri = params.getTextDocument.getUri
+    val context = getContext(uri).withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
+    val includeDeclaration = Option(params.getContext).exists(_.isIncludeDeclaration)
+    navigationEngine.references(context, workspaceManager.visibleFiles(uri), includeDeclaration).toJava: util.List[? <: Location]
+  }.toJava
 
   override def hover(params: HoverParams): CompletableFuture[Hover] = Future {
     val context = getContext(params.getTextDocument.getUri)

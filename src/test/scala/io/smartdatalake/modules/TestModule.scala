@@ -17,7 +17,7 @@ trait TestModule extends AppModule {
     override def isEnabled: Boolean = false
     override def completeAsync(prompt: String, model: Option[String]): Future[String] = Future.successful("")
   override val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)
-  override lazy val textDocumentService: SmartDataLakeTextDocumentService = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager)
+  override lazy val textDocumentService: SmartDataLakeTextDocumentService = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager, navigationEngine)
   override lazy val languageServer: SmartDataLakeLanguageServer = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)(using serviceExecutionContext)
 
 }
