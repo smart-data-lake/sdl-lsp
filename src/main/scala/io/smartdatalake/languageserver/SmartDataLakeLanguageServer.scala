@@ -5,7 +5,6 @@ import org.eclipse.lsp4j.services.*
 import org.eclipse.lsp4j.*
 
 import java.util.concurrent.CompletableFuture
-import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 import workspace.WorkspaceManager
 import io.smartdatalake.modules.Configurator
@@ -44,7 +43,7 @@ class SmartDataLakeLanguageServer(
     if textDocumentService.clientType == ClientType.Unknown then
       textDocumentService.clientType = clientName.map(ClientType.fromClientName).getOrElse(ClientType.Unknown)
 
-  @nowarn("cat=deprecation") // rootUri is the fallback for clients not sending workspace folders
+  // rootUri (deprecated in the protocol) is the fallback for clients not sending workspace folders
   private def initializeWorkspaces(initializeParams: InitializeParams): Unit =
     val params = Option(initializeParams)
     val rootUri = params.flatMap(p => Option(p.getWorkspaceFolders))

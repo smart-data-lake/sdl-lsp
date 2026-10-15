@@ -88,7 +88,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     ).asInstanceOf[LanguageClient]
     val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, WorkspaceManager(), navigationEngine, diagnosticsEngine)
     service.connect(client)
-    def nextMessages(): List[String] = Option(published.poll(5, TimeUnit.SECONDS)).value.getDiagnostics.toScala.map(_.getMessage)
+    def nextMessages(): List[String] = Option(published.poll(5, TimeUnit.SECONDS)).value.getDiagnostics.toScala.map(_.getMessage.getLeft)
 
     val text = "actions {\n  a1 { type = CopyAction, inputId = unknown-obj, outputId = unknown-obj }\n}"
     service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem("diag.conf", "hocon", 1, text)))

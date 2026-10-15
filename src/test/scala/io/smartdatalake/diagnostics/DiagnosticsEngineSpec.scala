@@ -14,7 +14,7 @@ class DiagnosticsEngineSpec extends UnitSpec:
 
     /** (severity, 1-based line, column, message) of each diagnostic */
     private def check(text: String, files: List[ConfigFile] = List(objectsFile)) =
-        engine.diagnostics(ConfigFile(uri, text), files).map(d => (d.getSeverity, d.getRange.getStart.getLine + 1, d.getRange.getStart.getCharacter, d.getMessage))
+        engine.diagnostics(ConfigFile(uri, text), files).map(d => (d.getSeverity, d.getRange.getStart.getLine + 1, d.getRange.getStart.getCharacter, d.getMessage.getLeft))
 
     "Diagnostics engine" should "report syntax errors with their position" in {
         // The last brace closes a1, so actions is not closed
