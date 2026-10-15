@@ -112,6 +112,16 @@ Changes of the LSP config file are applied when it is saved: the config files ar
 
 **Hint:** `configPaths` replaces the former `workspaceType` and `workspaceParameters` settings. A configuration using `workspaceType = ActiveWorkspace` is still understood: its `workspaceParameters` are used as `configPaths`.
 
+### SDLB Schema
+
+Completion and hovering are based on the JSON schema of SDLB configurations. The server bundles the schema of SDLB 2.5.0. To use the schema of your SDLB version, export it with SDLB and set its path, relative to the project root:
+
+```hocon
+schemaPath = "schema/sdl-schema.json"
+```
+
+If the file cannot be read, the bundled schema is used and a warning is logged.
+
 ### Logging
 
 Logs are sent to the LSP client and written to `~/.sdl-lsp/logs/sdl-lsp.log`. The default level is `info`; set `logLevel = debug` in your `.sdlb/lsp-config.conf` for more details. The environment variables `SDL_LSP_LOG_LEVEL` and `SDL_LSP_LOG_DIR` change the level and the directory at startup; with `SDL_LSP_LOG_LEVEL=trace`, all JSON-RPC messages are logged as well.
