@@ -16,6 +16,8 @@ trait ScalaJavaConverter {
 
   extension [T] (f: Future[T]) def toJava: CompletableFuture[T] = f.asJava.toCompletableFuture
 
+  extension [T] (f: CompletableFuture[T]) def toScala: Future[T] = f.asScala
+
   extension [T] (l: List[T]) def toJava: JList[T] = l.asJava
   
   extension [T] (l: JList[T]) def toScala: List[T] = l.asScala.toList

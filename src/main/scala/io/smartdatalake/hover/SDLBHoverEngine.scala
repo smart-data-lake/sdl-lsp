@@ -4,4 +4,4 @@ import io.smartdatalake.context.SDLBContext
 import org.eclipse.lsp4j.Hover
 
 trait SDLBHoverEngine:
-  def generateHoveringInformation(context: SDLBContext): Hover
+  def generateHoveringInformation(context: SDLBContext): Option[Hover]

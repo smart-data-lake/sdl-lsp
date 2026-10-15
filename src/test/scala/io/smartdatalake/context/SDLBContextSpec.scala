@@ -84,4 +84,13 @@ class SDLBContextSpec extends UnitSpec {
     line24StillEdgeOutside.word shouldBe "{" //line23EdgeOutside.textContext.rootConfig.root().render(ConfigRenderOptions.concise())
   }
 
+  it should "keep the last valid config but locate the caret in the current invalid text" in {
+    val validText = "dataObjects {\n  obj-a {\n    type = CsvFileDataObject\n  }\n}\nactions {\n  act {\n    type = CopyAction\n  }\n}"
+    val invalidText = validText.replace("type = CopyAction", "type = CopyAction\n    inputId = ")
+    val context = SDLBContext.fromText(validText).withText(invalidText)
+    context.isConfigCompleted shouldBe false
+    context.rootConfig.hasPath("dataObjects.obj-a") shouldBe true
+    context.withCaretPosition(9, 14).parentPath shouldBe List("actions", "act", "inputId")
+  }
+
 }

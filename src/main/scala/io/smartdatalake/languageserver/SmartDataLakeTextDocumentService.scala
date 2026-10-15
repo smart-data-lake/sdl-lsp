@@ -1,49 +1,38 @@
 package io.smartdatalake.languageserver
 
-import io.smartdatalake.completion.{SDLBCompletionEngine, SDLBCompletionEngineImpl}
-import io.smartdatalake.context.SDLBContext
-import io.smartdatalake.hover.{SDLBHoverEngine, SDLBHoverEngineImpl}
-import io.smartdatalake.schema.SchemaReader
-import io.smartdatalake.client.{ClientAware, ClientType}
+import io.smartdatalake.client.ClientAware
+import io.smartdatalake.completion.{CompletionData, SDLBCompletionEngine}
+import io.smartdatalake.completion.ai.AICompletionEngine
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
+import io.smartdatalake.formatting.{FormattingStrategy, FormattingStrategyFactory}
+import io.smartdatalake.hover.SDLBHoverEngine
+import io.smartdatalake.logging.SDLBLogger
 import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.services.TextDocumentService
-import org.eclipse.lsp4j.{CodeAction, CodeActionParams, CodeLens, CodeLensParams,
-  Command, CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
-  DefinitionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-  DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-  DocumentHighlight, DocumentHighlightParams, DocumentOnTypeFormattingParams,
-  DocumentRangeFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover,
-  HoverParams, InsertReplaceEdit, Location, LocationLink, MarkupContent, MarkupKind,
-  Position, Range, ReferenceParams, RenameParams, SignatureHelp, SignatureHelpParams,
-  SymbolInformation, TextDocumentPositionParams, TextEdit, WorkspaceEdit, InsertTextMode}
+import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
+  DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+  Hover, HoverParams, InsertTextMode}
 
 import java.util
-import java.util.concurrent.CompletableFuture
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
-import scala.concurrent.duration.*
-import scala.concurrent.Await
-import scala.io.Source
-import scala.util.Using
-import io.smartdatalake.logging.SDLBLogger
-import io.smartdatalake.formatting.{FormattingStrategy, FormattingStrategyFactory}
-import org.eclipse.lsp4j.CompletionTriggerKind
-import io.smartdatalake.completion.ai.AICompletionEngine
-import io.smartdatalake.completion.CompletionData
+import java.util.concurrent.{CompletableFuture, TimeUnit}
 import scala.collection.concurrent.TrieMap
-import scala.util.Try
-import workspace.WorkspaceContext
+import scala.concurrent.duration.*
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
+import workspace.WorkspaceManager
 
 class SmartDataLakeTextDocumentService(
       private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine,
-      private val aiCompletionEngine: AICompletionEngine)(using ExecutionContext)
+      private val aiCompletionEngine: AICompletionEngine,
+      private val workspaceManager: WorkspaceManager)(using ExecutionContext)
       extends TextDocumentService
-      with WorkspaceContext with ClientAware with SDLBLogger {
+      with ClientAware with SDLBLogger {
+  import workspaceManager.{getContext, isLSPConfigUri, defaultLSPConfigText}
 
   private lazy val formattingStrategy: FormattingStrategy = FormattingStrategyFactory.createFormattingStrategy(clientType)
   private val precomputedCompletions: TrieMap[String, Future[String]] = TrieMap.empty
+  private val AI_COMPLETION_TIMEOUT = 3.seconds
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = Future {
     val uri = params.getTextDocument.getUri
@@ -89,111 +78,50 @@ class SmartDataLakeTextDocumentService(
 
 
   override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
-    val uri = didOpenTextDocumentParams.getTextDocument.getUri
-    val content = didOpenTextDocumentParams.getTextDocument.getText
-    insert(uri, content)
-    updateWorkspace(uri)
+    val textDocument = didOpenTextDocumentParams.getTextDocument
+    workspaceManager.updateContent(textDocument.getUri, textDocument.getText)
 
   override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit =
+    // Full synchronization: the first content change holds the whole text
     val contentChanges = didChangeTextDocumentParams.getContentChanges
-    update(didChangeTextDocumentParams.getTextDocument.getUri, Option(contentChanges).flatMap(_.toScala.headOption).map(_.getText).getOrElse(""))
-
+    workspaceManager.updateContent(didChangeTextDocumentParams.getTextDocument.getUri, Option(contentChanges).flatMap(_.toScala.headOption).map(_.getText).getOrElse(""))
 
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit =
-    val uri = didCloseTextDocumentParams.getTextDocument.getUri
-    if isUriDeleted(uri) then
-      info(s"Detecting deletion of $uri")
-      update(uri, "")
-    updateWorkspace(uri)
+    workspaceManager.close(didCloseTextDocumentParams.getTextDocument.getUri)
 
-  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit =
-    updateWorkspace(didSaveTextDocumentParams.getTextDocument.getUri)
+  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = ()
 
-  override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] = Future {
-    if aiCompletionEngine.isEnabled then
-      
-      Option(completionItem.getData).map(_.toString).flatMap(CompletionData.fromJson).foreach { data =>
-        if data.withTabStops then
-          precomputedCompletions.get(completionItem.getInsertText) match
-            case Some(future) =>
-              Try {
-                // Try to get result with timeout
-                val result = Await.result(future, 3000.milliseconds)
-                completionItem.setInsertText(result)
-                completionItem.setInsertTextMode(InsertTextMode.AdjustIndentation)
-              }.recover {
-                case _: java.util.concurrent.TimeoutException =>
-                  // If timeout, don't modify the insert text - use default
-                  debug("AI completion inference timeout, using default completion")
-                case ex: Exception =>
-                  debug(s"Error during AI completion: ${ex.getMessage}")
-              }
-            
-            case None =>
-              val futureInsertText = aiCompletionEngine.generateInsertTextWithTabStops(completionItem.getInsertText, data.parentPath, data.context)
-              val insertText = Await.result(futureInsertText, 3000.milliseconds)
-              completionItem.setInsertText(insertText)
-              completionItem.setInsertTextMode(InsertTextMode.AdjustIndentation)
-      }
-    
-    completionItem
+  override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] =
+    val tabStopsData = Option.when(aiCompletionEngine.isEnabled)(completionItem.getData).flatMap(Option(_))
+      .map(_.toString)
+      .flatMap(CompletionData.fromJson)
+      .filter(_.withTabStops)
+    tabStopsData match
+      case None => CompletableFuture.completedFuture(completionItem)
+      case Some(data) =>
+        val insertText = completionItem.getInsertText
+        val aiInsertText = precomputedCompletions
+          .getOrElse(insertText, aiCompletionEngine.generateInsertTextWithTabStops(insertText, data.parentPath, data.context))
+          .recover { case NonFatal(ex) =>
+            debug(s"Error during AI completion: ${ex.getMessage}")
+            insertText
+          }
+        // If the AI is too slow, keep the default insert text
+        val timeout = CompletableFuture.supplyAsync(() => insertText, CompletableFuture.delayedExecutor(AI_COMPLETION_TIMEOUT.toMillis, TimeUnit.MILLISECONDS)).toScala
+        Future.firstCompletedOf(List(aiInsertText, timeout)).map { newInsertText =>
+          if newInsertText != insertText then
+            completionItem.setInsertText(newInsertText)
+            completionItem.setInsertTextMode(InsertTextMode.AdjustIndentation)
+          else
+            debug("No AI completion available in time, using default completion")
+          completionItem
+        }.toJava
+
+  override def hover(params: HoverParams): CompletableFuture[Hover] = Future {
+    val context = getContext(params.getTextDocument.getUri)
+    val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
+    trace(s"Attempt to hover with hoverContext=$hoverContext")
+    hoverEngine.generateHoveringInformation(hoverContext).orNull
   }.toJava
 
-  override def hover(params: HoverParams): CompletableFuture[Hover] = {
-    Future {
-      val context = getContext(params.getTextDocument.getUri)
-      val hoverContext = context.withCaretPosition(params.getPosition.getLine + 1, params.getPosition.getCharacter)
-      trace(s"Attempt to hover with hoverContext=$hoverContext")
-      hoverEngine.generateHoveringInformation(hoverContext)
-    }.toJava
-  }
-
-  override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = super.signatureHelp(params)
-
-  /**
-    * To be used to navigate to the definition of a field
-    *
-    * @param params
-    * @return
-    */
-  override def definition(params: DefinitionParams): CompletableFuture[messages.Either[util.List[_ <: Location], util.List[_ <: LocationLink]]] = super.definition(params)
-
-  /**
-    * 
-    * To be used to navigate to the reference of a field: the other way around than definition
-    *
-    * @param referenceParams
-    * @return
-    */
-  override def references(referenceParams: ReferenceParams): CompletableFuture[util.List[_ <: Location]] = ???
-
-  override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[util.List[_ <: DocumentHighlight]] = super.documentHighlight(params)
-
-  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[messages.Either[SymbolInformation, DocumentSymbol]]] = super.documentSymbol(params)
-
-  /**
-    * To be used to suggest missing required fields for example
-    *
-    * @param params
-    * @return
-    */
-  override def codeAction(params: CodeActionParams): CompletableFuture[util.List[messages.Either[Command, CodeAction]]] = super.codeAction(params)
-
-  override def codeLens(codeLensParams: CodeLensParams): CompletableFuture[util.List[_ <: CodeLens]] = ???
-
-  override def resolveCodeLens(codeLens: CodeLens): CompletableFuture[CodeLens] = ???
-
-  /**
-    * To be used to format the document and to retrieve the tab size
-    *
-    * @param documentFormattingParams
-    * @return
-    */
-  override def formatting(documentFormattingParams: DocumentFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
-
-  override def rangeFormatting(documentRangeFormattingParams: DocumentRangeFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
-
-  override def onTypeFormatting(documentOnTypeFormattingParams: DocumentOnTypeFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = ???
-
-  override def rename(renameParams: RenameParams): CompletableFuture[WorkspaceEdit] = ???
 }

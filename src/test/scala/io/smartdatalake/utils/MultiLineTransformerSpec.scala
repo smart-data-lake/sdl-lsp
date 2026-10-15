@@ -51,6 +51,14 @@ class MultiLineTransformerSpec extends UnitSpec {
 
   }
 
+  it should "flatten multi lines with Windows line endings consistently with corrected positions" in {
+    val windowsText = "a = \"\"\"first\r\nsecond $x {y}\"\"\"\r\nb = 1"
+    val flattened = MLT.flattenMultiLines(windowsText)
+    flattened should be ("a = \"\"\"firstsecond $x {y}\"\"\"\r\nb = 1")
+    val (line, column) = MLT.computeCorrectedPosition(windowsText, 2, 7)
+    flattened.split("\\R", -1)(line - 1).substring(column) should startWith ("$x")
+  }
+
 
 
   def trimLines(s: String): String =
