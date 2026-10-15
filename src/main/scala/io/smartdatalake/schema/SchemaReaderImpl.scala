@@ -1,6 +1,7 @@
 package io.smartdatalake.schema
 
 import com.typesafe.config.{ConfigList, ConfigObject, ConfigValue}
+import io.circe.Json
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.schema.SchemaCollections.{AttributeCollection, TemplateCollection}
 
@@ -11,9 +12,9 @@ import io.smartdatalake.logging.SDLBLogger
 
 class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLogger {
 
-  private val schema = ujson.read(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
+  private val schema: Json = io.circe.parser.parse(Using.resource(getClass.getClassLoader.getResourceAsStream(schemaPath)) { inputStream =>
     Source.fromInputStream(inputStream).getLines().mkString("\n").trim
-  })
+  }).fold(error => throw IllegalStateException(s"Invalid schema $schemaPath", error), identity)
 
 
   private[schema] def createGlobalSchemaContext: SchemaContext = SchemaContext(schema, schema)
