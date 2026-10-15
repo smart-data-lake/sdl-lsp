@@ -8,6 +8,7 @@ This LSP server currently provides:
 
 * smart autocompletion suggestions
 * Hovering description of objects, their attributes etc.
+* Go to definition and find references of dataObjects and connections (`inputId`, `outputIds`, `connectionId`, ...), across files
 
 ### Features
 

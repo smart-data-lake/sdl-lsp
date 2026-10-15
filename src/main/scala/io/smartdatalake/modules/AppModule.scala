@@ -13,6 +13,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import io.smartdatalake.completion.ai.model.{ModelClient, OpenAICompatibleClient}
 import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
+import io.smartdatalake.navigation.NavigationEngine
 import io.smartdatalake.context.SDLBContext
 import scala.util.Try
 import java.net.URI
@@ -36,7 +37,8 @@ trait AppModule:
   lazy given ExecutionContext = serviceExecutionContext
 
   lazy val workspaceManager: WorkspaceManager = new WorkspaceManager
-  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager)
+  lazy val navigationEngine: NavigationEngine = new NavigationEngine
+  lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager, navigationEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
   lazy val configurator: Configurator = new Configurator(aiCompletionEngine, modelClient, schemaReader)
   lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)

@@ -57,7 +57,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
       override def completeAsync(prompt: String, model: Option[String]): Future[String] =
         calls.incrementAndGet()
         Future.successful("""[{"tab_stop_number": 1, "new_value": "ai_name"}]""")
-    val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, new AICompletionEngineImpl(countingClient), WorkspaceManager())
+    val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, new AICompletionEngineImpl(countingClient), WorkspaceManager(), navigationEngine)
     val item = new TextDocumentItem("ai.conf", "hocon", 1, "dataObjects {\n  \n}")
     service.didOpen(new DidOpenTextDocumentParams(item))
     val completionParams = new CompletionParams(new TextDocumentIdentifier("ai.conf"), new Position(1, 2))

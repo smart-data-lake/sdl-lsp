@@ -3,6 +3,7 @@ package io.smartdatalake.languageserver.workspace
 import io.smartdatalake.context.SDLBContext
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import io.smartdatalake.logging.SDLBLogger
+import io.smartdatalake.navigation.ConfigFile
 
 import java.io.IOException
 import java.nio.file.attribute.BasicFileAttributes
@@ -134,6 +135,19 @@ class WorkspaceManager extends SDLBLogger:
                     case None => state.copy(workspace = state.workspace.remove(uri), isolated = state.isolated - uri)
                 state = updated.copy(openDocuments = state.openDocuments - uri)
             }
+
+    /** Files seen from the given document: all the workspace files, or only the document itself if it is outside of the workspace */
+    def visibleFiles(uri: String): List[ConfigFile] = synchronized {
+        val workspace = state.workspace
+        if workspace.contains(uri) then
+            workspace.texts.map((fileUri, text) => ConfigFile(fileUri, text, workspace.parsed.getOrElse(fileUri, SDLBContext.EMPTY_CONFIG))).toList
+        else
+            state.isolated.get(uri).map(_.textContext.originalText).map { text =>
+                ConfigFile(uri, text, SDLBContext.parse(uri, text).getOrElse(SDLBContext.EMPTY_CONFIG))
+            }.toList
+    }
+
+    def openDocuments: Set[String] = synchronized(state.openDocuments.keySet)
 
     def isLSPConfigUri(uri: String): Boolean = uri.endsWith(CONFIG_FILE_NAME)
 

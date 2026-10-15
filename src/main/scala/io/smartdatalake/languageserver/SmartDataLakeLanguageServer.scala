@@ -31,6 +31,8 @@ class SmartDataLakeLanguageServer(
     initializeResult.getCapabilities.setCompletionProvider(completionOptions)
 
     initializeResult.getCapabilities.setHoverProvider(true)
+    initializeResult.getCapabilities.setDefinitionProvider(true)
+    initializeResult.getCapabilities.setReferencesProvider(true)
     Future(initializeResult).toJava
   }
 
