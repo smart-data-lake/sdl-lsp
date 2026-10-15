@@ -6,9 +6,13 @@ import io.smartdatalake.completion.ai.model.ModelClient
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
 
+import java.lang.reflect.Proxy
+import java.util
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
+import org.eclipse.lsp4j.services.LanguageClient
 import scala.concurrent.Future
-import org.eclipse.lsp4j.{CompletionParams, DidOpenTextDocumentParams, HoverParams, Position,
+import org.eclipse.lsp4j.{CompletionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, PublishDiagnosticsParams, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier, HoverParams, Position,
   TextDocumentIdentifier, TextDocumentItem}
 
 class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
@@ -57,7 +61,7 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
       override def completeAsync(prompt: String, model: Option[String]): Future[String] =
         calls.incrementAndGet()
         Future.successful("""[{"tab_stop_number": 1, "new_value": "ai_name"}]""")
-    val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, new AICompletionEngineImpl(countingClient), WorkspaceManager(), navigationEngine)
+    val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, new AICompletionEngineImpl(countingClient), WorkspaceManager(), navigationEngine, diagnosticsEngine)
     val item = new TextDocumentItem("ai.conf", "hocon", 1, "dataObjects {\n  \n}")
     service.didOpen(new DidOpenTextDocumentParams(item))
     val completionParams = new CompletionParams(new TextDocumentIdentifier("ai.conf"), new Position(1, 2))
@@ -74,6 +78,28 @@ class SmartDataLakeTextDocumentServiceSpec extends UnitSpec {
     val resolved = service.resolveCompletionItem(items.head).get()
     resolved.getInsertText should include ("${1:ai_name}")
     calls.get() shouldBe tabStopItems
+  }
+
+  it should "publish diagnostics of opened documents" in {
+    val published = new LinkedBlockingQueue[PublishDiagnosticsParams]()
+    val client = Proxy.newProxyInstance(getClass.getClassLoader, Array(classOf[LanguageClient]), (_, method, args) =>
+      if method.getName == "publishDiagnostics" then published.put(args(0).asInstanceOf[PublishDiagnosticsParams])
+      null
+    ).asInstanceOf[LanguageClient]
+    val service = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, WorkspaceManager(), navigationEngine, diagnosticsEngine)
+    service.connect(client)
+    def nextMessages(): List[String] = Option(published.poll(5, TimeUnit.SECONDS)).value.getDiagnostics.toScala.map(_.getMessage)
+
+    val text = "actions {\n  a1 { type = CopyAction, inputId = unknown-obj, outputId = unknown-obj }\n}"
+    service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem("diag.conf", "hocon", 1, text)))
+    nextMessages() shouldBe List("Unknown dataObject 'unknown-obj'", "Unknown dataObject 'unknown-obj'")
+
+    val fixed = text + "\ndataObjects {\n  unknown-obj { type = CsvFileDataObject }\n}"
+    service.didChange(new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier("diag.conf", 2), util.List.of(new TextDocumentContentChangeEvent(fixed))))
+    nextMessages() shouldBe empty
+
+    service.didClose(new DidCloseTextDocumentParams(new TextDocumentIdentifier("diag.conf")))
+    nextMessages() shouldBe empty
   }
 
 }

@@ -8,6 +8,9 @@ import org.eclipse.lsp4j.{DocumentSymbol, Location, Position, Range, SymbolKind}
 
 import scala.util.Try
 
+/** A value referencing the object with the given id of the given section */
+case class Reference(section: String, id: String, location: Location)
+
 /** A config file as seen by the navigation features: its current text and its last valid unresolved config */
 case class ConfigFile(uri: String, text: String, config: Config):
   lazy val lines: Array[String] = text.split("\\R", -1)
@@ -23,7 +26,7 @@ class NavigationEngine:
   def references(context: SDLBContext, files: Iterable[ConfigFile], includeDeclaration: Boolean): List[Location] =
     target(context).toList.flatMap { (section, id) =>
       val declarations = if includeDeclaration then files.flatMap(definition(_, section, id)) else Nil
-      declarations ++ files.flatMap(file => referencesIn(file, References.attributesReferencing(section), id))
+      declarations ++ files.flatMap(file => referencesIn(file, section, id))
     }
 
   /** Section and id of the object under the caret: either its definition key or a reference to it */
@@ -40,23 +43,34 @@ class NavigationEngine:
       case _ => None
     }
 
-  private def referencesIn(file: ConfigFile, attributes: Set[String], id: String): List[Location] =
-    def isId(value: ConfigValue): Boolean =
-      Try(value.valueType == ConfigValueType.STRING && value.unwrapped == id).getOrElse(false)
+  private def referencesIn(file: ConfigFile, section: String, id: String): List[Location] =
+    allReferences(file).collect { case Reference(`section`, `id`, location) => location }
 
-    def search(value: ConfigValue): List[Location] = Try(value match
+  /** All values of the file referencing another object by id, e.g. inputIds of actions */
+  def allReferences(file: ConfigFile): List[Reference] =
+    def stringValue(value: ConfigValue): Option[String] =
+      Try(Option.when(value.valueType == ConfigValueType.STRING)(value.unwrapped.toString)).toOption.flatten
+
+    def reference(section: String, value: ConfigValue): Option[Reference] =
+      stringValue(value).flatMap(id => location(file, value, id).map(Reference(section, id, _)))
+
+    def search(value: ConfigValue): List[Reference] = Try(value match
       case obj: ConfigObject => obj.toScala.toList.flatMap { (key, child) =>
-        if attributes.contains(key) then child match
-          case list: ConfigList => list.toScala.filter(isId).flatMap(location(file, _, id))
-          case single if isId(single) => location(file, single, id).toList
-          case _ => Nil
-        else search(child)
+        References.referencedSection(key) match
+          case Some(section) => child match
+            case list: ConfigList => list.toScala.flatMap(reference(section, _))
+            case single => reference(section, single).toList
+          case None => search(child)
       }
       case list: ConfigList => list.toScala.flatMap(search)
       case _ => Nil
     ).getOrElse(Nil) // unresolved values can't be inspected
 
     search(file.config.root())
+
+  /** Ids of the objects defined in the given section of the files */
+  def definedIds(files: Iterable[ConfigFile], section: String): Set[String] =
+    files.flatMap(file => Try(file.config.root().get(section)).toOption.collect { case obj: ConfigObject => obj.keySet.toScala }.getOrElse(Set.empty)).toSet
 
   /** Outline of a file: dataObjects, actions and connections, in the order of the file */
   def documentSymbols(file: ConfigFile): List[DocumentSymbol] =

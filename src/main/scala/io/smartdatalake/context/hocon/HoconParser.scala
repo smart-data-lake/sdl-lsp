@@ -1,10 +1,9 @@
 package io.smartdatalake.context.hocon
 
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
+import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigParseOptions}
 
 
 import scala.annotation.tailrec
-import scala.util.Try
 import io.smartdatalake.context.hocon.HoconTokens as Token
 
 /**
@@ -21,8 +20,13 @@ private[context] object HoconParser:
    * @return parsed text in config format
    */
   def parse(text: String, originDescription: String = ""): Option[Config] =
+    parseOrError(text, originDescription).toOption
+
+  /** The parsed config, or the error of the first invalid element */
+  def parseOrError(text: String, originDescription: String = ""): Either[ConfigException, Config] =
     val options = ConfigParseOptions.defaults().setOriginDescription(Option(originDescription).filter(_.nonEmpty).orNull)
-    Try(ConfigFactory.parseString(text, options)).toOption
+    try Right(ConfigFactory.parseString(text, options))
+    catch case e: ConfigException => Left(e)
 
   val EMPTY_CONFIG: Config = ConfigFactory.parseString("")
 

@@ -13,7 +13,7 @@ import io.smartdatalake.client.{ClientAware, ClientType}
 import io.smartdatalake.logging.SDLBLogger
 
 class SmartDataLakeLanguageServer(
-  private val textDocumentService: TextDocumentService & ClientAware,
+  private val textDocumentService: TextDocumentService & LanguageClientAware & ClientAware,
   private val workspaceManager: WorkspaceManager,
   private val workspaceService: WorkspaceService,
   private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware with SDLBLogger {
@@ -67,7 +67,7 @@ class SmartDataLakeLanguageServer(
 
 
   override def connect(languageClient: LanguageClient): Unit = {
-    () // the client is used for logging only, see ClientLogger
+    textDocumentService.connect(languageClient)
   }
   
   def getErrorCode: Int = errorCode

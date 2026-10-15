@@ -10,27 +10,31 @@ import io.smartdatalake.logging.SDLBLogger
 import io.smartdatalake.utils.LruCache
 import com.typesafe.config.ConfigRenderOptions
 import org.eclipse.lsp4j.jsonrpc.messages
-import org.eclipse.lsp4j.services.TextDocumentService
+import org.eclipse.lsp4j.services.{LanguageClient, LanguageClientAware, TextDocumentService}
 import org.eclipse.lsp4j.{CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
   DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-  DefinitionParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InsertTextMode, Location, LocationLink, ReferenceParams, SymbolInformation}
+  DefinitionParams, DocumentSymbol, PublishDiagnosticsParams, DocumentSymbolParams, Hover, HoverParams, InsertTextMode, Location, LocationLink, ReferenceParams, SymbolInformation}
 
 import java.util
-import java.util.concurrent.{CompletableFuture, TimeUnit}
+import java.util.concurrent.{CompletableFuture, Executors, ScheduledFuture, TimeUnit}
+import scala.collection.concurrent.TrieMap
+import scala.util.Try
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import workspace.WorkspaceManager
 import io.smartdatalake.navigation.NavigationEngine
+import io.smartdatalake.diagnostics.DiagnosticsEngine
 
 class SmartDataLakeTextDocumentService(
       private val completionEngine: SDLBCompletionEngine,
       private val hoverEngine: SDLBHoverEngine,
       private val aiCompletionEngine: AICompletionEngine,
       private val workspaceManager: WorkspaceManager,
-      private val navigationEngine: NavigationEngine)(using ExecutionContext)
+      private val navigationEngine: NavigationEngine,
+      private val diagnosticsEngine: DiagnosticsEngine)(using ExecutionContext)
       extends TextDocumentService
-      with ClientAware with SDLBLogger {
+      with LanguageClientAware with ClientAware with SDLBLogger {
   import workspaceManager.{getContext, isLSPConfigUri, defaultLSPConfigText}
 
   // The client type is only known after the initialize request
@@ -39,6 +43,16 @@ class SmartDataLakeTextDocumentService(
   private val aiCompletions = LruCache[(String, String, Int), Future[String]](maxEntries = 100)
   // Context of the last completion request, used when resolving one of its items
   @volatile private var lastAIContext: String = ""
+
+  @volatile private var client: Option[LanguageClient] = None
+  private val diagnosticsScheduler = Executors.newSingleThreadScheduledExecutor { runnable =>
+    val thread = Thread(runnable, "diagnostics")
+    thread.setDaemon(true)
+    thread
+  }
+  private val pendingDiagnostics = TrieMap.empty[String, ScheduledFuture[?]]
+
+  override def connect(languageClient: LanguageClient): Unit = client = Option(languageClient)
   private val AI_COMPLETION_TIMEOUT = 3.seconds
 
   override def completion(params: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = Future {
@@ -95,17 +109,40 @@ class SmartDataLakeTextDocumentService(
   override def didOpen(didOpenTextDocumentParams: DidOpenTextDocumentParams): Unit =
     val textDocument = didOpenTextDocumentParams.getTextDocument
     workspaceManager.updateContent(textDocument.getUri, textDocument.getText)
+    scheduleDiagnostics(textDocument.getUri, 200.milliseconds)
 
   override def didChange(didChangeTextDocumentParams: DidChangeTextDocumentParams): Unit =
     // Full synchronization: the first content change holds the whole text
     val contentChanges = didChangeTextDocumentParams.getContentChanges
-    workspaceManager.updateContent(didChangeTextDocumentParams.getTextDocument.getUri, Option(contentChanges).flatMap(_.toScala.headOption).map(_.getText).getOrElse(""))
+    val uri = didChangeTextDocumentParams.getTextDocument.getUri
+    workspaceManager.updateContent(uri, Option(contentChanges).flatMap(_.toScala.headOption).map(_.getText).getOrElse(""))
+    // Wait for the user to stop typing
+    scheduleDiagnostics(uri, 500.milliseconds)
 
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit =
-    workspaceManager.close(didCloseTextDocumentParams.getTextDocument.getUri)
+    val uri = didCloseTextDocumentParams.getTextDocument.getUri
+    workspaceManager.close(uri)
+    pendingDiagnostics.remove(uri).foreach(_.cancel(false))
+    client.foreach(_.publishDiagnostics(PublishDiagnosticsParams(uri, util.List.of())))
 
   override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit =
     workspaceManager.save(didSaveTextDocumentParams.getTextDocument.getUri)
+    // References in the other documents may have changed
+    workspaceManager.openDocuments.foreach(scheduleDiagnostics(_, 0.milliseconds))
+
+  private def scheduleDiagnostics(uri: String, delay: FiniteDuration): Unit =
+    if client.isDefined && !isLSPConfigUri(uri) then
+      val task = diagnosticsScheduler.schedule((() => publishDiagnostics(uri)): Runnable, delay.toMillis, TimeUnit.MILLISECONDS)
+      pendingDiagnostics.put(uri, task).foreach(_.cancel(false))
+
+  private def publishDiagnostics(uri: String): Unit =
+    Try {
+      val visibleFiles = workspaceManager.visibleFiles(uri)
+      visibleFiles.find(_.uri == uri).foreach { file =>
+        val diagnostics = diagnosticsEngine.diagnostics(uri, file.text, visibleFiles)
+        client.foreach(_.publishDiagnostics(PublishDiagnosticsParams(uri, diagnostics.toJava)))
+      }
+    }.failed.foreach(ex => warn(s"Error while computing the diagnostics of $uri: ${ex.getMessage}"))
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] =
     Option.when(aiCompletionEngine.isEnabled)(completionItem).flatMap(tabStopsData) match
