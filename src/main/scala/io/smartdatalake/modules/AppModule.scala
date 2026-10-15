@@ -10,7 +10,7 @@ import org.eclipse.lsp4j.services.{LanguageClientAware, LanguageServer, TextDocu
 
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
-import io.smartdatalake.completion.ai.model.{ModelClient, GeminiClient}
+import io.smartdatalake.completion.ai.model.{ModelClient, OpenAICompatibleClient}
 import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
 import io.smartdatalake.context.SDLBContext
@@ -23,7 +23,7 @@ trait AppModule:
   lazy val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl(schemaReader)
 
   // AI Completion: Prefers colder start over slow first completion response: so no lazy val here
-  val modelClient: ModelClient = new GeminiClient(Option(System.getenv("GOOGLE_API_KEY")))
+  val modelClient: ModelClient = new OpenAICompatibleClient(OpenAICompatibleClient.apiKeyFromEnvironment)
   lazy val ioExecutorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val ioExecutionContext: ExecutionContextExecutorService = ExecutionContext.fromExecutorService(ioExecutorService)
   val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)(using ioExecutionContext)
@@ -35,10 +35,15 @@ trait AppModule:
   lazy val workspaceManager: WorkspaceManager = new WorkspaceManager
   lazy val textDocumentService: TextDocumentService & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
-  lazy val configurator: Configurator = new Configurator(aiCompletionEngine)
+  lazy val configurator: Configurator = new Configurator(aiCompletionEngine, modelClient)
   lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)
 
-class Configurator(aiCompletionEngine: AICompletionEngineImpl):
+class Configurator(aiCompletionEngine: AICompletionEngineImpl, modelClient: ModelClient):
   def configureApp(lspConfig: SDLBContext): Unit =
+    def setting(key: String): Option[String] = Try(lspConfig.rootConfig.getString(key)).toOption.map(_.trim).filter(_.nonEmpty)
     aiCompletionEngine.tabStopsPrompt = Try(lspConfig.rootConfig.getString("tabStopsPrompt")).toOption
+    aiCompletionEngine.model = setting("aiModel")
+    modelClient match
+      case client: OpenAICompatibleClient => client.configure(setting("aiBaseUrl"))
+      case _ => ()
 

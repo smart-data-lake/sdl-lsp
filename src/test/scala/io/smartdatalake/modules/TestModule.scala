@@ -15,7 +15,7 @@ trait TestModule extends AppModule {
   // Never call a real model in tests, even if GOOGLE_API_KEY is set
   override val modelClient: ModelClient = new ModelClient:
     override def isEnabled: Boolean = false
-    override def completeAsync(prompt: String, model: String): Future[String] = Future.successful("")
+    override def completeAsync(prompt: String, model: Option[String]): Future[String] = Future.successful("")
   override val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)
   override lazy val textDocumentService: SmartDataLakeTextDocumentService = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager)
   override lazy val languageServer: SmartDataLakeLanguageServer = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)(using serviceExecutionContext)
