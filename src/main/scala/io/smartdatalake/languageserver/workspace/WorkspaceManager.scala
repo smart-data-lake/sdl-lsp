@@ -35,7 +35,7 @@ class WorkspaceManager extends SDLBLogger:
         rootUri: String = "",
         configPaths: List[Path] = List.empty,
         workspace: Workspace = Workspace(),
-        isolated: Map[String, SDLBContext] = Map.empty,
+        isolated: Map[String, Workspace] = Map.empty,
         lspConfig: SDLBContext = SDLBContext.EMPTY_CONTEXT,
         openDocuments: Map[String, String] = Map.empty):
 
@@ -46,10 +46,12 @@ class WorkspaceManager extends SDLBLogger:
             if isInWorkspace(uri) then
                 copy(workspace = workspace.updateContent(uri, text))
             else
-                val context = isolated.get(uri)
-                    .map(_.withText(text))
-                    .getOrElse(SDLBContext.fromText(uri, text))
-                copy(isolated = isolated.updated(uri, context))
+                // An isolated file is a workspace of its own
+                copy(isolated = isolated.updated(uri, isolated.getOrElse(uri, Workspace()).updateContent(uri, text)))
+
+        /** The workspace the given file belongs to, if known */
+        def workspaceOf(uri: String): Option[Workspace] =
+            if workspace.contains(uri) then Some(workspace) else isolated.get(uri)
 
     private var state = State()
     private var lspConfigListeners: List[SDLBContext => Unit] = List.empty
@@ -100,9 +102,8 @@ class WorkspaceManager extends SDLBLogger:
     def getContext(uri: String): SDLBContext =
         if isLSPConfigUri(uri) then SDLBContext.EMPTY_CONTEXT
         else synchronized {
-            state = state.copy(workspace = state.workspace.refreshed(uri))
-            state.workspace.contexts.get(uri)
-                .orElse(state.isolated.get(uri))
+            state = state.copy(workspace = state.workspace.refreshed(uri), isolated = state.isolated.updatedWith(uri)(_.map(_.refreshed(uri))))
+            state.workspaceOf(uri).flatMap(_.contexts.get(uri))
                 .getOrElse {
                     debug(s"No context known for $uri")
                     SDLBContext.EMPTY_CONTEXT
@@ -136,15 +137,12 @@ class WorkspaceManager extends SDLBLogger:
                 state = updated.copy(openDocuments = state.openDocuments - uri)
             }
 
-    /** Files seen from the given document: all the workspace files, or only the document itself if it is outside of the workspace */
+    /**
+      * Files seen from the given document: all the workspace files, or only the document itself if it is outside of the workspace.
+      * They are kept by the workspace, so their syntax trees are parsed only once per text
+      */
     def visibleFiles(uri: String): List[ConfigFile] = synchronized {
-        val workspace = state.workspace
-        if workspace.contains(uri) then
-            workspace.texts.map((fileUri, text) => ConfigFile(fileUri, text, workspace.parsed.getOrElse(fileUri, SDLBContext.EMPTY_CONFIG))).toList
-        else
-            state.isolated.get(uri).map(_.textContext.originalText).map { text =>
-                ConfigFile(uri, text, SDLBContext.parse(uri, text).getOrElse(SDLBContext.EMPTY_CONFIG))
-            }.toList
+        state.workspaceOf(uri).toList.flatMap(_.files.values)
     }
 
     def openDocuments: Set[String] = synchronized(state.openDocuments.keySet)

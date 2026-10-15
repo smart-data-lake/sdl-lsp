@@ -2,8 +2,7 @@ package io.smartdatalake.context
 
 import com.typesafe.config.{Config, ConfigException, ConfigList, ConfigObject, ConfigValue}
 import io.smartdatalake.context.TextContext.EMPTY_TEXT_CONTEXT
-import io.smartdatalake.context.hocon.{HoconParser, HoconScanner}
-import io.smartdatalake.utils.MultiLineTransformer
+import io.smartdatalake.context.hocon.HoconParser
 
 import scala.annotation.tailrec
 import io.smartdatalake.logging.SDLBLogger
@@ -16,16 +15,13 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
   def withOthersConfig(othersConfig: Config): SDLBContext =
     copy(textContext = textContext.withOthersConfig(othersConfig))
 
+  /** @param originalLine 1-based line of the caret */
   def withCaretPosition(originalLine: Int, originalCol: Int): SDLBContext =
-    val TextContext(_, originalText, _, configText, _, _) = textContext
-    if originalLine <= 0 || originalLine > originalText.count(_ == '\n') + 1 || originalCol < 0 then this else
-      val (newLine, newCol) = MultiLineTransformer.computeCorrectedPosition(originalText, originalLine, originalCol)
-      // Comments and structural characters in strings must not be taken for structure
-      val maskedText = HoconScanner.mask(configText)
-      val word = HoconParser.retrieveWordAtPosition(maskedText, newLine, newCol)
-      val parentPath = HoconParser.retrieveParentPath(maskedText, newLine, newCol)
-      copy(parentPath = parentPath, word = word)
-      
+    val text = textContext.originalText
+    if originalLine <= 0 || originalLine > text.count(_ == '\n') + 1 || originalCol < 0 then this else
+      val syntax = textContext.syntax
+      val offset = syntax.offsetAt(originalLine - 1, originalCol)
+      copy(parentPath = syntax.parentPathAt(offset), word = syntax.wordAt(offset))
 
   def getParentContext: Option[ConfigValue] =
     @tailrec

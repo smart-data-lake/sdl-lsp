@@ -1,8 +1,8 @@
 package io.smartdatalake.navigation
 
-import com.typesafe.config.{Config, ConfigList, ConfigObject, ConfigValue, ConfigValueType}
+import com.typesafe.config.{Config, ConfigObject}
 import io.smartdatalake.context.{References, SDLBContext}
-import io.smartdatalake.context.hocon.HoconScanner
+import io.smartdatalake.context.hocon.{HoconDocument, PathMatch}
 import io.smartdatalake.context.References.{ACTIONS, CONNECTIONS, DATA_OBJECTS}
 import io.smartdatalake.conversions.ScalaJavaConverterAPI.*
 import org.eclipse.lsp4j.{DocumentSymbol, Location, Position, Range, SymbolKind}
@@ -12,9 +12,20 @@ import scala.util.Try
 /** A value referencing the object with the given id of the given section */
 case class Reference(section: String, id: String, location: Location)
 
-/** A config file as seen by the navigation features: its current text and its last valid unresolved config */
-case class ConfigFile(uri: String, text: String, config: Config):
-  lazy val lines: Array[String] = text.split("\\R", -1)
+/**
+  * A config file as seen by the navigation features: its current text and its last valid unresolved config.
+  * @param parseSyntax gives the syntax tree of the text, e.g. the one already parsed by the context of the file
+  */
+case class ConfigFile(uri: String, text: String, config: Config)(parseSyntax: () => HoconDocument = () => HoconDocument.parse(text)):
+  /** Syntax tree of the current text, giving the locations */
+  lazy val syntax: HoconDocument = parseSyntax()
+
+  def range(start: Int, end: Int): Range =
+    val (startLine, startColumn) = syntax.positionAt(start)
+    val (endLine, endColumn) = syntax.positionAt(end)
+    Range(Position(startLine, startColumn), Position(endLine, endColumn))
+
+  def location(start: Int, end: Int): Location = Location(uri, range(start, end))
 
 /** Go to definition, find references and outline of dataObjects, actions and connections */
 class NavigationEngine:
@@ -39,35 +50,20 @@ class NavigationEngine:
     section.filter(_ => id.nonEmpty).map(_ -> id)
 
   private def definition(file: ConfigFile, section: String, id: String): Option[Location] =
-    Try(file.config.root().get(section)).toOption.flatMap {
-      case sectionObject: ConfigObject => Option(sectionObject.get(id)).flatMap(location(file, _, id))
-      case _ => None
-    }
+    file.syntax.find(List(section, id)).headOption.map(m => file.location(m.segment.start, m.segment.end))
 
   private def referencesIn(file: ConfigFile, section: String, id: String): List[Location] =
     allReferences(file).collect { case Reference(`section`, `id`, location) => location }
 
-  /** All values of the file referencing another object by id, e.g. inputIds of actions */
+  /** All values of the file referencing another object by id, e.g. inputIds of actions. Substitutions are not followed */
   def allReferences(file: ConfigFile): List[Reference] =
-    def stringValue(value: ConfigValue): Option[String] =
-      Try(Option.when(value.valueType == ConfigValueType.STRING)(value.unwrapped.toString)).toOption.flatten
-
-    def reference(section: String, value: ConfigValue): Option[Reference] =
-      stringValue(value).flatMap(id => location(file, value, id).map(Reference(section, id, _)))
-
-    def search(value: ConfigValue): List[Reference] = Try(value match
-      case obj: ConfigObject => obj.toScala.toList.flatMap { (key, child) =>
-        References.referencedSection(key) match
-          case Some(section) => child match
-            case list: ConfigList => list.toScala.flatMap(reference(section, _))
-            case single => reference(section, single).toList
-          case None => search(child)
-      }
-      case list: ConfigList => list.toScala.flatMap(search)
-      case _ => Nil
-    ).getOrElse(Nil) // unresolved values can't be inspected
-
-    search(file.config.root())
+    for
+      field <- file.syntax.allFields
+      section <- field.key.lastOption.flatMap(segment => References.referencedSection(segment.name)).toList
+      value <- field.value.toList
+      element <- value.array.map(_.elements).getOrElse(List(value))
+      id <- element.stringValue.toList
+    yield Reference(section, id, file.location(element.contentStart, element.contentEnd))
 
   /** Ids of the objects defined in the given section of the files */
   def definedIds(files: Iterable[ConfigFile], section: String): Set[String] =
@@ -76,43 +72,21 @@ class NavigationEngine:
   /** Outline of a file: dataObjects, actions and connections, in the order of the file */
   def documentSymbols(file: ConfigFile): List[DocumentSymbol] =
     List(DATA_OBJECTS -> SymbolKind.Struct, ACTIONS -> SymbolKind.Function, CONNECTIONS -> SymbolKind.Interface)
-      .flatMap((section, kind) => sectionSymbol(file, section, kind))
-      .sortBy(_.getRange.getStart.getLine)
-
-  private def sectionSymbol(file: ConfigFile, section: String, kind: SymbolKind): Option[DocumentSymbol] =
-    Try(file.config.root().get(section)).toOption.collect { case sectionObject: ConfigObject => sectionObject }.flatMap { sectionObject =>
-      val children = sectionObject.toScala.toList.flatMap { (id, value) =>
-        symbol(file, id, value, kind, detail = objectType(value))
-      }.sortBy(_.getRange.getStart.getLine)
-      symbol(file, section, sectionObject, SymbolKind.Namespace, detail = "").map { sectionSymbol =>
+      .flatMap((section, kind) => file.syntax.find(List(section)).map { sectionMatch =>
+        val children = file.syntax.children(sectionMatch).map(child => symbol(file, child, kind, detail = objectType(file, child)))
+        val sectionSymbol = symbol(file, sectionMatch, SymbolKind.Namespace, detail = "")
         sectionSymbol.setChildren(children.toJava)
         sectionSymbol
-      }
-    }
+      })
+      .sortBy(symbol => (symbol.getRange.getStart.getLine, symbol.getRange.getStart.getCharacter))
 
-  /** Symbol of the given value, from its key to the end of its block */
-  private def symbol(file: ConfigFile, name: String, value: ConfigValue, kind: SymbolKind, detail: String): Option[DocumentSymbol] =
-    location(file, value, name).map { keyLocation =>
-      val start = keyLocation.getRange.getStart
-      val afterKey = HoconScanner.lineStart(file.text, start.getLine) + start.getCharacter + name.length
-      // Skip the closing quote of a quoted key
-      val keyOffset = if afterKey < file.text.length && file.text(afterKey) == '"' then afterKey + 1 else afterKey
-      val end = value match
-        case _: ConfigObject => HoconScanner.blockEnd(file.text, keyOffset)
-          .map(offset => Position(HoconScanner.lineOf(file.text, offset), offset - HoconScanner.lineStart(file.text, HoconScanner.lineOf(file.text, offset)) + 1))
-        case _ => None
-      val range = Range(start, end.getOrElse(Position(start.getLine, file.lines(start.getLine).length)))
-      DocumentSymbol(name, kind, range, keyLocation.getRange, detail)
-    }
+  /** Symbol of the given occurrence of a path, from its key to the end of its value */
+  private def symbol(file: ConfigFile, m: PathMatch, kind: SymbolKind, detail: String): DocumentSymbol =
+    val segment = m.segment
+    // Include the quotes of a quoted key
+    val start = if segment.start > 0 && file.text(segment.start - 1) == '"' then segment.start - 1 else segment.start
+    DocumentSymbol(segment.name, kind, file.range(start, math.max(m.field.end, segment.end)), file.range(segment.start, segment.end), detail)
 
-  private def objectType(value: ConfigValue): String = value match
-    case obj: ConfigObject => Option(obj.get("type")).flatMap(v => Try(v.unwrapped.toString).toOption).getOrElse("")
-    case _ => ""
-
-  /** Location of the id on the line where the value is defined */
-  private def location(file: ConfigFile, value: ConfigValue, id: String): Option[Location] =
-    val line = value.origin.lineNumber - 1
-    Option.when(line >= 0 && line < file.lines.length) {
-      val column = math.max(file.lines(line).indexOf(id), 0)
-      Location(file.uri, Range(Position(line, column), Position(line, column + id.length)))
-    }
+  private def objectType(file: ConfigFile, m: PathMatch): String =
+    file.syntax.children(m).filter(child => child.segment.name == "type" && child.isWholeKey)
+      .flatMap(_.value.flatMap(_.stringValue)).lastOption.getOrElse("")
