@@ -17,7 +17,7 @@ case class SDLBContext private(textContext: TextContext, parentPath: List[String
     copy(textContext = textContext.withContents(newContents))
 
   def withCaretPosition(originalLine: Int, originalCol: Int): SDLBContext =
-    val TextContext(_, originalText, _, configText, config, _) = textContext
+    val TextContext(_, originalText, _, configText, _, _) = textContext
     if originalLine <= 0 || originalLine > originalText.count(_ == '\n') + 1 || originalCol < 0 then this else
       val (newLine, newCol) = MultiLineTransformer.computeCorrectedPosition(originalText, originalLine, originalCol)
       val word = HoconParser.retrieveWordAtPosition(configText, newLine, newCol)

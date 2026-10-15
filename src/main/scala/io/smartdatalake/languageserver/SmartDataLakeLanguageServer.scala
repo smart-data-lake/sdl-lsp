@@ -16,7 +16,6 @@ class SmartDataLakeLanguageServer(
   private val workspaceService: WorkspaceService,
   private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware {
   
-  private var client: Option[LanguageClient] = None
   private var errorCode = 1
 
   override def initialize(initializeParams: InitializeParams): CompletableFuture[InitializeResult] = {
@@ -55,7 +54,7 @@ class SmartDataLakeLanguageServer(
 
 
   override def connect(languageClient: LanguageClient): Unit = {
-    client = Some(languageClient)
+    () // the client is used for logging only, see ClientLogger
   }
   
   def getErrorCode: Int = errorCode
