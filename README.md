@@ -108,7 +108,7 @@ In this example, `extract.conf`, `common.conf` and `local.conf` all see each oth
 
 If `configPaths` is not set, all `.conf` files of the project are part of the workspace (hidden folders and `target` are skipped).
 
-Please note that **you need to restart the LSP Server if you want to apply the changes of your LSP config file.**
+Changes of the LSP config file are applied when it is saved: the config files are reloaded, without losing the unsaved changes of opened files.
 
 **Hint:** `configPaths` replaces the former `workspaceType` and `workspaceParameters` settings. A configuration using `workspaceType = ActiveWorkspace` is still understood: its `workspaceParameters` are used as `configPaths`.
 
@@ -168,7 +168,7 @@ $contextText"""
 
 This prompt helps the AI understand the context of your Smart Data Lake Builder configuration and provide more relevant suggestions for code completion.
 
-Don't forget to **restart the LSP Server** if you want to apply the customized prompt.
+The customized prompt is applied as soon as the LSP config file is saved.
 
 ## Build
 

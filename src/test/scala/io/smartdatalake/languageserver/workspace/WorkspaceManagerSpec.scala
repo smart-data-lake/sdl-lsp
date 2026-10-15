@@ -141,6 +141,25 @@ class WorkspaceManagerSpec extends UnitSpec:
         manager.getContext("example.conf").rootConfig.getInt("a") should be (1)
     }
 
+    it should "reload the LSP config when it is saved, keeping unsaved changes" in {
+        val root = createProject(Some("""configPaths = "conf""""))
+        val manager = WorkspaceManager()
+        var loadedConfigs = List.empty[SDLBContext]
+        manager.onLSPConfigLoaded(config => loadedConfigs = loadedConfigs :+ config)
+        manager.initialize(root.toUri.toString)
+        val aUri = uri(root, "conf/a.conf")
+        manager.updateContent(aUri, "dataObjects { unsaved { type = CsvFileDataObject } }")
+        manager.getContext(aUri).rootConfig.hasPath("local") shouldBe false
+
+        Files.writeString(root.resolve(".sdlb/lsp-config.conf"), "configPaths = \"conf,env/local.conf\"\naiModel = my-model")
+        manager.save(uri(root, ".sdlb/lsp-config.conf"))
+
+        val config = manager.getContext(aUri).rootConfig
+        config.getBoolean("local") shouldBe true
+        config.hasPath("dataObjects.unsaved") shouldBe true
+        loadedConfigs.map(_.rootConfig.hasPath("aiModel")) shouldBe List(false, true)
+    }
+
     it should "normalize Windows paths correctly" in {
         val rootUri = "file:///C:/Users/user/Downloads/getting-started/getting-started/.sdlb/lsp-config.conf"
         val uri = "file:///C:/Users/user/Downloads/getting-started/getting-started/.sdlb/lsp-config.conf"

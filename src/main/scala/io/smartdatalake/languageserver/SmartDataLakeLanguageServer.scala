@@ -17,6 +17,7 @@ class SmartDataLakeLanguageServer(
   private val configurator: Configurator)(using ExecutionContext) extends LanguageServer with LanguageClientAware {
   
   private var errorCode = 1
+  workspaceManager.onLSPConfigLoaded(configurator.configureApp)
 
   override def initialize(initializeParams: InitializeParams): CompletableFuture[InitializeResult] = {
     initializeWorkspaces(initializeParams)  
@@ -37,8 +38,7 @@ class SmartDataLakeLanguageServer(
       .flatMap(_.toScala.headOption.map(_.getUri))
       .orElse(params.flatMap(p => Option(p.getRootUri)))
       .getOrElse("")
-    val lspConfig = workspaceManager.initialize(rootUri)
-    configurator.configureApp(lspConfig)
+    workspaceManager.initialize(rootUri)
 
 
   override def shutdown(): CompletableFuture[AnyRef] = {

@@ -89,7 +89,8 @@ class SmartDataLakeTextDocumentService(
   override def didClose(didCloseTextDocumentParams: DidCloseTextDocumentParams): Unit =
     workspaceManager.close(didCloseTextDocumentParams.getTextDocument.getUri)
 
-  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit = ()
+  override def didSave(didSaveTextDocumentParams: DidSaveTextDocumentParams): Unit =
+    workspaceManager.save(didSaveTextDocumentParams.getTextDocument.getUri)
 
   override def resolveCompletionItem(completionItem: CompletionItem): CompletableFuture[CompletionItem] =
     val tabStopsData = Option.when(aiCompletionEngine.isEnabled)(completionItem.getData).flatMap(Option(_))
