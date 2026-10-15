@@ -84,6 +84,13 @@ private[schema] case class SchemaContext(private val globalSchema: Json, localSc
       .orElse(localSchema.field(ADDITIONAL_PROPERTIES).flatMap(_.field(DESCRIPTION)).flatMap(_.asString))
       .getOrElse("")
 
+  /** Attributes allowed in an object of this schema, with the name of the schema. None if the object accepts any attribute */
+  def allowedAttributes: Option[(String, Set[String])] =
+    (localSchema.field(SCHEMA_TYPE), localSchema.field(PROPERTIES), localSchema.field(ADDITIONAL_PROPERTIES).flatMap(_.asBoolean)) match
+      case (Some(JStr(SCHEMA_OBJECT)), Some(JObj(properties)), Some(false)) =>
+        Some(localSchema.field(TITLE).flatMap(_.asString).getOrElse("") -> properties.keys.toSet)
+      case _ => None
+
   private def requiredAttributes(schema: Json): Set[String] =
     schema.field(REQUIRED).flatMap(_.asArray).map(_.flatMap(_.asString).toSet).getOrElse(Set.empty)
 

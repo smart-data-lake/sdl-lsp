@@ -8,9 +8,9 @@ This LSP server currently provides:
 
 * smart autocompletion suggestions
 * Hovering description of objects, their attributes etc.
-* Go to definition and find references of dataObjects and connections (`inputId`, `outputIds`, `connectionId`, ...), across files
+* Go to definition and find references of dataObjects and connections (`inputId`, `outputIds`, `connectionId`, ...) and of substitutions (`${templates.myTemplate}`), across files
 * Outline of the dataObjects, actions and connections of a file
-* Diagnostics: HOCON syntax errors, references to unknown dataObjects or connections, and unknown built-in types
+* Diagnostics: HOCON syntax errors, references to unknown dataObjects or connections, unknown built-in types, attributes unknown to the schema, and substitutions of undefined paths
 
 ### Features
 
@@ -234,6 +234,7 @@ The workflow builds and tests the project with the version taken from the tag (`
 ## Authors
 
 [scalathe](https://github.com/dsalathe)
+[zzeekk](https://github.com/zzeekk)
 
 ## License
 

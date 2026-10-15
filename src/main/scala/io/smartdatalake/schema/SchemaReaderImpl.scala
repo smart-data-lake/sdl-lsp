@@ -86,6 +86,14 @@ class SchemaReaderImpl(val schemaPath: String) extends SchemaReader with SDLBLog
         schemaContext.getDescription
 
   /**
+   * Attributes allowed in the object at the given path of the config, with the name of its schema, e.g. Table.
+   * None if the object is unknown to the schema (e.g. of a custom type), or if it accepts any attribute (e.g. options)
+   */
+  def allowedAttributes(path: List[String], rootConfig: ConfigValue): Option[(String, Set[String])] =
+    // The config may still contain unresolved values, which cannot be read
+    Try(navigate(path, rootConfig, bestEffort = false)).toOption.flatten.flatMap(_.allowedAttributes)
+
+  /**
    * Not a crucial method but useful to speedup query process and might avoid some unwanted crash
    * @param word word to check
    * @return true if word has no chance to appear in the schema file
