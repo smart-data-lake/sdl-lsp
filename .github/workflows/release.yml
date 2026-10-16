@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -27,7 +27,7 @@ jobs:
         run: mvn -B -ntp -Daether.dependencyCollector.impl=bf package -Drevision="${GITHUB_REF_NAME#v}" -Ptest-sonar
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -40,7 +40,7 @@ jobs:
           npm ci
           npm version "$VERSION" --no-git-tag-version
           mkdir -p ../release
-          npx --yes @vscode/vsce@4.0.0 package --skip-license -o "../release/sdl-lsp-vscode-${VERSION}.vsix"
+          npx --yes @vscode/vsce@4.0.0 package --skip-license --no-dependencies -o "../release/sdl-lsp-vscode-${VERSION}.vsix"
 
       - name: Create GitHub release
         env:

@@ -1,2 +1,7 @@
 .vscode/**
 *.vsix
+# Bundled into dist/extension.js by esbuild
+node_modules/**
+extension.js
+package-lock.json
+.gitignore

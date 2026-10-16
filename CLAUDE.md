@@ -21,7 +21,7 @@ mvn test -Dsuites='io.smartdatalake.completion.SDLBCompletionEngineSpec @partial
 
 Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`, which builds with `-Drevision=X.Y.Z` and creates a GitHub release with the fat jar (as `sdl-lsp-X.Y.Z.jar` and `sdl-lsp.jar`) and the VS Code extension packaged with version X.Y.Z (as `sdl-lsp-vscode-X.Y.Z.vsix` and `sdl-lsp-vscode.vsix`); a suffix like `-rc1` makes it a pre-release. There is no Maven repository publishing.
 
-Surefire is disabled; tests run via `scalatest-maven-plugin`, so use `-Dsuites`, not `-Dtest`. Run the server with `java -jar <jar>`. The client type (IntelliJ/LSP4IJ, VS Code, …) is detected from `clientInfo` in the initialize request (`ClientType.fromClientName`); `--client intellij|vscode` overrides it. `vscode/` is a minimal VS Code client extension (plain JS, `vscode-languageclient`) that starts the jar over stdio (default `.sdlb/sdl-lsp.jar` in the project root, as in the IntelliJ template, downloaded from the release of the extension version if missing); it is not built by Maven.
+Surefire is disabled; tests run via `scalatest-maven-plugin`, so use `-Dsuites`, not `-Dtest`. Run the server with `java -jar <jar>`. The client type (IntelliJ/LSP4IJ, VS Code, …) is detected from `clientInfo` in the initialize request (`ClientType.fromClientName`); `--client intellij|vscode` overrides it. `vscode/` is a minimal VS Code client extension (plain JS, `vscode-languageclient`, bundled by esbuild into `dist/extension.js` on packaging, `npm run build`) that starts the jar over stdio (default `.sdlb/sdl-lsp.jar` in the project root, as in the IntelliJ template, downloaded from the release of the extension version if missing); it is not built by Maven.
 
 ## Architecture
 

@@ -12,7 +12,7 @@
   "engines": {
     "vscode": "^1.82.0"
   },
-  "main": "./extension.js",
+  "main": "./dist/extension.js",
   "activationEvents": [
     "onLanguage:hocon"
   ],
@@ -53,7 +53,14 @@
       }
     }
   },
+  "scripts": {
+    "build": "esbuild extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
+    "vscode:prepublish": "npm run build"
+  },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }
