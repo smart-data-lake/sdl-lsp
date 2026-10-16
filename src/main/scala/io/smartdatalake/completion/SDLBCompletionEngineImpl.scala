@@ -56,8 +56,6 @@ class SDLBCompletionEngineImpl(private val schemaReader: SchemaReader, private v
       
       completionItem.setKind(CompletionItemKind.Snippet)
       completionItem.setInsertTextFormat(InsertTextFormat.Snippet)
-      if completionItem.getInsertText.contains("${1:") then
-        completionItem.setData(CompletionData(withTabStops = true, parentPath = context.parentPath.mkString("->")).toJson)
       completionItem
     }.toList
 

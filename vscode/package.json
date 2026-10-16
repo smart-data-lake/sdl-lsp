@@ -48,7 +48,7 @@
             "type": "string"
           },
           "default": {},
-          "description": "Environment variables of the server, e.g. AI_API_KEY or SDL_LSP_LOG_LEVEL."
+          "description": "Environment variables of the server, e.g. SDL_LSP_LOG_LEVEL."
         }
       }
     }

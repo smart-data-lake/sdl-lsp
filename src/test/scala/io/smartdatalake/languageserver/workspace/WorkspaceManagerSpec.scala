@@ -151,13 +151,13 @@ class WorkspaceManagerSpec extends UnitSpec:
         manager.updateContent(aUri, "dataObjects { unsaved { type = CsvFileDataObject } }")
         manager.getContext(aUri).rootConfig.hasPath("local") shouldBe false
 
-        Files.writeString(root.resolve(".sdlb/lsp-config.conf"), "configPaths = \"conf,env/local.conf\"\naiModel = my-model")
+        Files.writeString(root.resolve(".sdlb/lsp-config.conf"), "configPaths = \"conf,env/local.conf\"\nlogLevel = debug")
         manager.save(uri(root, ".sdlb/lsp-config.conf"))
 
         val config = manager.getContext(aUri).rootConfig
         config.getBoolean("local") shouldBe true
         config.hasPath("dataObjects.unsaved") shouldBe true
-        loadedConfigs.map(_.rootConfig.hasPath("aiModel")) shouldBe List(false, true)
+        loadedConfigs.map(_.rootConfig.hasPath("logLevel")) shouldBe List(false, true)
     }
 
     it should "normalize Windows paths correctly" in {

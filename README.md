@@ -2,7 +2,7 @@
 
 [LSP Implementation](https://microsoft.github.io/language-server-protocol/implementors/servers/) for the [Smart Data Lake Builder](https://smartdatalake.ch/) configuration files.
 
-## Description
+## Features
 
 This LSP server currently provides:
 
@@ -11,33 +11,6 @@ This LSP server currently provides:
 * Go to definition and find references of dataObjects and connections (`inputId`, `outputIds`, `connectionId`, ...) and of substitutions (`${templates.myTemplate}`), across files
 * Outline of the dataObjects, actions and connections of a file
 * Diagnostics: HOCON syntax errors, references to unknown dataObjects or connections, unknown built-in types, attributes unknown to the schema, and substitutions of undefined paths
-
-### Features
-
-### 1. Basic Code Completion
-
-![GIF example of basic code completion](resources/img/simpleCodeCompletion.gif)
-
-### 2. ✨ AI-Augmented Code Completion ✨
-
-![GIF example of AI-augmented code completion](resources/img/aiCodeCompletion.gif)
-
-### 3. Hovering Capability
-
-![GIF example of hovering capability](resources/img/hoveringCapability.gif)
-
-### 4. Multi-File Context Awareness
-
-![GIF example of multi-file awareness](resources/img/multifileAwareness.gif)
-
-### 5. Secure Streamlined Logs in the Client
-
-*Works in IntelliJ, VSCode, Cursor, and more*
-![GIF example of streamlined logs](resources/img/streamlinedLogs.gif)
-
-### 6. Generating Default Template Configs
-
-![GIF example of LSP default template](resources/img/lspDefaultTemplate.gif)
 
 ## How it works
 
@@ -53,13 +26,6 @@ Usually the client has responsibility to start the server. They first communicat
 
 * Java 17 or newer
 * IntelliJ or VSCode
-
-### Download
-
-Download `sdl-lsp.jar` from the [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest) (direct link: [sdl-lsp.jar](https://github.com/smart-data-lake/sdl-lsp/releases/latest/download/sdl-lsp.jar)) and store it in `.sdlb` directory.
-Each release also provides the same jar with its version in the file name.
-
-**Hint:** Should you prefer building the project on your own, follow the instructions further below.
 
 ### Setting a basic LSP client in IntelliJ
 
@@ -85,7 +51,7 @@ Settings:
 
 * `sdlLsp.jarPath`: another location of the jar, relative to the project root or absolute (default: `.sdlb/sdl-lsp.jar`). It is downloaded there as well if missing.
 * `sdlLsp.javaPath`: the Java executable, if `java` on the `PATH` is not Java 17 or newer.
-* `sdlLsp.env`: environment variables of the server, e.g. `{ "AI_API_KEY": "..." }` for the [AI-assisted features](#ai-assisted-features).
+* `sdlLsp.env`: environment variables of the server, e.g. `{ "SDL_LSP_LOG_LEVEL": "debug" }`.
 
 The extension associates `.conf` files with the language `hocon`. If another extension claims `.conf` files, check that the language mode in the status bar is `HOCON`.
 
@@ -94,9 +60,20 @@ The extension associates `.conf` files with the language `hocon`. If another ext
 The extension lives in the [`vscode`](vscode) folder. To try changes without installing it, open that folder in VSCode, run `npm install` and press `F5`: a new window starts with the extension loaded.
 To build the `.vsix` yourself, run `npx @vscode/vsce package --skip-license` in that folder.
 
+### Download and run standalone
+
+If you want to use the LSP server without installing a client, 
+* Download the LSP jar file from [latest release](https://github.com/smart-data-lake/sdl-lsp/releases/latest).
+* Start it manually in a terminal:
+  ```bash
+  java -jar sdl-lsp.jar 
+  ```
+
+**Hint:** Should you prefer building the project on your own, follow the instructions further below.
+
 ## LSP Server Configuration
 
-The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define the workspace and AI-assisted features.
+The SDL LSP server behavior can be customized by creating a configuration file at `.sdlb/lsp-config.conf` in your project root. This file allows you to define the workspace, the SDLB schema and the logging.
 
 **Hint:** You can generate a default template of the config file using the LSP itself. See screnshot below: ![screenshot of triggering default template of the LSP config file in LSP4IJ](resources/img/default-template-lsp-config.png)
 
@@ -150,60 +127,6 @@ The schema in use and the reason are logged at startup, e.g. `Using the schema o
 
 Logs are sent to the LSP client and written to `~/.sdl-lsp/logs/sdl-lsp.log`. The default level is `info`; set `logLevel = debug` in your `.sdlb/lsp-config.conf` for more details. The environment variables `SDL_LSP_LOG_LEVEL` and `SDL_LSP_LOG_DIR` change the level and the directory at startup; with `SDL_LSP_LOG_LEVEL=trace`, all JSON-RPC messages are logged as well.
 
-### AI-Assisted Features
-
-The SDL LSP server includes AI-assisted features to improve code completion and suggestions. It works with any endpoint implementing the OpenAI chat completions API (OpenAI, Gemini, Mistral, a local Ollama server, ...). By default, Gemini is used. To use these features:
-
-1. Obtain an API key from your provider, e.g. a Google API key from [Google AI Studio](https://aistudio.google.com) for the default Gemini setup
-2. Configure your LSP client to include the environment variable `AI_API_KEY` with your API key (`GOOGLE_API_KEY` is supported as well). In VSCode, use the setting `sdlLsp.env`. For IntelliJ, see screnshot below: ![screenshot of Intellij for setting up Google API Key](resources/img/googleAPIKey-intellij.png)
-3. Optionally choose another provider or model, and customize the AI prompt in your `.sdlb/lsp-config.conf` file
-
-#### Choosing the AI provider and model
-
-```hocon
-# Base URL of the OpenAI compatible API, default: https://generativelanguage.googleapis.com/v1beta/openai
-aiBaseUrl = "https://api.openai.com/v1"
-# Model name, default: gemini-3.5-flash-lite
-aiModel = "gpt-5-mini"
-```
-
-For a local model, no API key is needed as soon as `aiBaseUrl` is set, e.g. with Ollama: `aiBaseUrl = "http://localhost:11434/v1"` and `aiModel = "qwen3:8b"`. Answers must arrive within 3 seconds, so prefer small and fast models.
-
-#### Customizing AI Prompts
-
-You can customize how the AI generates suggestions by modifying the prompt in your configuration file:
-
-```hocon
-tabStopsPrompt = """You're helping a user with code completion in an IDE.
-The user's current file is about a Smart Data Lake Builder configuration, where the "dataObjects" block provides all the data sources
-and the "actions" block usually defines a transformation from one or more data sources to another.
-Extract a list of suggested tab stops default values.
-Tab stops have the following format in the default insert text: ${number:default_value}.
-Use the context text to suggest better default values.
-Concerning the title of the object, try to infer the intention of the user.
-For example, copying from the web to a json could be interpreted as a download action.
-Output should be valid JSON with this schema:
-[
-  {
-    "tab_stop_number": number,
-    "new_value": string
-  }
-]
-
-Default insert text:
-$insertText
-
-Suggested item is to be inserted in the following HOCON path:
-$parentPath
-
-Context text, HOCON format, the user's current file:
-$contextText"""
-```
-
-This prompt helps the AI understand the context of your Smart Data Lake Builder configuration and provide more relevant suggestions for code completion.
-
-The customized prompt is applied as soon as the LSP config file is saved.
-
 ## Build
 
 ### Build Requirements
@@ -230,6 +153,10 @@ git push origin v1.2.0
 ```
 
 The workflow builds and tests the project with the version taken from the tag (`mvn package -Drevision=1.2.0`), then creates the GitHub release with generated release notes and the jar attached. Tags with a suffix, like `v1.2.0-rc1`, are published as pre-releases.
+
+## Release Notes
+
+see https://github.com/smart-data-lake/sdl-lsp/releases
 
 ## Authors
 

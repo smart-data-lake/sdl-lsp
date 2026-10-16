@@ -28,7 +28,7 @@ class ConfiguratorSpec extends UnitSpec with Eventually:
         Files.writeString(root.resolve("schema/my-schema.json"), customSchema)
         val lspConfigUri = root.resolve(".sdlb/lsp-config.conf").toUri.toString
         val reader = new SchemaReaderImpl("fixture/sdl-schema/sdl-schema-2.5.0.json")
-        val configurator = new Configurator(aiCompletionEngine, modelClient, reader, schemaRepository)(using ioExecutionContext)
+        val configurator = new Configurator(reader, schemaRepository)(using ioExecutionContext)
         rootAttributes(reader) should contain ("actions")
 
         configurator.configureApp(SDLBContext.fromText(lspConfigUri, """schemaPath = "schema/my-schema.json""""))
@@ -54,7 +54,7 @@ class ConfiguratorSpec extends UnitSpec with Eventually:
             case u if u.endsWith("sdl-schema-2.7.0.json") => Right("""{"version": "2.7.0", "type": "object", "properties": {"older": {"type": "string"}}}""")
             case u => Left(s"HTTP 404 for $u"))
         val reader = new SchemaReaderImpl("fixture/sdl-schema/sdl-schema-2.5.0.json")
-        val configurator = new Configurator(aiCompletionEngine, modelClient, reader, repository)(using ioExecutionContext)
+        val configurator = new Configurator(reader, repository)(using ioExecutionContext)
 
         // No version: the bundled schema
         configurator.configureApp(SDLBContext.fromText(lspConfigUri, ""))
@@ -81,7 +81,7 @@ class ConfiguratorSpec extends UnitSpec with Eventually:
     it should "keep the bundled schema if no schema can be found" in {
         val lspConfigUri = Files.createTempDirectory("sdl-lsp-configurator").resolve(".sdlb/lsp-config.conf").toUri.toString
         val reader = new SchemaReaderImpl("fixture/sdl-schema/sdl-schema-2.5.0.json")
-        val configurator = new Configurator(aiCompletionEngine, modelClient, reader, schemaRepository)(using ioExecutionContext)
+        val configurator = new Configurator(reader, schemaRepository)(using ioExecutionContext)
         configurator.configureApp(SDLBContext.fromText(lspConfigUri, "sdlbVersion = 9.9.9"))
         Thread.sleep(200)
         reader.schemaVersion shouldBe "2.5.0"

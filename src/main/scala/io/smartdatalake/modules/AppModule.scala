@@ -10,8 +10,6 @@ import org.eclipse.lsp4j.services.{LanguageClientAware, LanguageServer, TextDocu
 
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService, Future}
-import io.smartdatalake.completion.ai.model.{ModelClient, OpenAICompatibleClient}
-import io.smartdatalake.completion.ai.AICompletionEngineImpl
 import io.smartdatalake.languageserver.workspace.WorkspaceManager
 import io.smartdatalake.navigation.NavigationEngine
 import io.smartdatalake.diagnostics.DiagnosticsEngine
@@ -29,11 +27,9 @@ trait AppModule:
   lazy val completionEngine: SDLBCompletionEngine = new SDLBCompletionEngineImpl(schemaReader, contextAdvisor)
   lazy val hoverEngine: SDLBHoverEngine = new SDLBHoverEngineImpl(schemaReader)
 
-  // AI Completion: Prefers colder start over slow first completion response: so no lazy val here
-  val modelClient: ModelClient = new OpenAICompatibleClient(OpenAICompatibleClient.apiKeyFromEnvironment)
+  // Background IO, e.g. schema downloads
   lazy val ioExecutorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val ioExecutionContext: ExecutionContextExecutorService = ExecutionContext.fromExecutorService(ioExecutorService)
-  val aiCompletionEngine: AICompletionEngineImpl = new AICompletionEngineImpl(modelClient)(using ioExecutionContext)
 
   lazy val serviceExecutorService: ExecutorService = Executors.newCachedThreadPool()
   lazy val serviceExecutionContext: ExecutionContext & ExecutorService = ExecutionContext.fromExecutorService(serviceExecutorService)
@@ -42,9 +38,9 @@ trait AppModule:
   lazy val workspaceManager: WorkspaceManager = new WorkspaceManager
   lazy val navigationEngine: NavigationEngine = new NavigationEngine
   lazy val diagnosticsEngine: DiagnosticsEngine = new DiagnosticsEngine(schemaReader, navigationEngine)
-  lazy val textDocumentService: TextDocumentService & LanguageClientAware & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, aiCompletionEngine, workspaceManager, navigationEngine, diagnosticsEngine)
+  lazy val textDocumentService: TextDocumentService & LanguageClientAware & ClientAware = new SmartDataLakeTextDocumentService(completionEngine, hoverEngine, workspaceManager, navigationEngine, diagnosticsEngine)
   lazy val workspaceService: WorkspaceService = new SmartDataLakeWorkspaceService
-  lazy val configurator: Configurator = new Configurator(aiCompletionEngine, modelClient, schemaReader, schemaRepository)(using ioExecutionContext)
+  lazy val configurator: Configurator = new Configurator(schemaReader, schemaRepository)(using ioExecutionContext)
   lazy val languageServer: LanguageServer & LanguageClientAware = new SmartDataLakeLanguageServer(textDocumentService, workspaceManager, workspaceService, configurator)
 
 /**
@@ -52,7 +48,7 @@ trait AppModule:
   * the file given by schemaPath, the schema of the SDLB version given by sdlbVersion or found in the pom.xml of the project, the bundled schema.
   * Schemas of other versions than the bundled one are taken from the cache of the repository, or downloaded in the background.
   */
-class Configurator(aiCompletionEngine: AICompletionEngineImpl, modelClient: ModelClient, schemaReader: SchemaReaderImpl, schemaRepository: SchemaRepository)
+class Configurator(schemaReader: SchemaReaderImpl, schemaRepository: SchemaRepository)
                   (using ExecutionContext) extends SDLBLogger:
   // Only the schema requested by the last configuration may be applied
   private val schemaRequest = AtomicInteger()
@@ -60,11 +56,6 @@ class Configurator(aiCompletionEngine: AICompletionEngineImpl, modelClient: Mode
   def configureApp(lspConfig: SDLBContext): Unit =
     def setting(key: String): Option[String] = Try(lspConfig.rootConfig.getString(key)).toOption.map(_.trim).filter(_.nonEmpty)
     setting("logLevel").foreach(LoggingManager.setRootLevel)
-    aiCompletionEngine.tabStopsPrompt = Try(lspConfig.rootConfig.getString("tabStopsPrompt")).toOption
-    aiCompletionEngine.model = setting("aiModel")
-    modelClient match
-      case client: OpenAICompatibleClient => client.configure(setting("aiBaseUrl"))
-      case _ => ()
     // The parent of the .sdlb folder of the LSP config file
     val projectRoot = Try(Paths.get(URI(lspConfig.textContext.uri)).getParent.getParent).toOption
     val download = Try(lspConfig.rootConfig.getBoolean("schemaDownload")).getOrElse(true)
